@@ -60,11 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  waitBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'SCHEDULE_REMINDER', payload: { minutes: 1 } }, (r) => {
-      resultEl.textContent = r?.scheduled ? 'Reminder scheduled (1 min demo)' : 'Could not schedule';
-    });
-  });
 
   resumeBtn.addEventListener('click', () => {
     chrome.runtime.sendMessage({ type: 'RESUME_PURCHASE' }, (r) => {
