@@ -1,0 +1,23 @@
+import mongoose from 'mongoose'
+
+const userSchema = new mongoose.Schema({
+  email: String,
+  password: String,
+  plaidAccessToken: String,
+  budget: {
+    total: Number,
+    spent: { type: Number, default: 0 },
+    categories: Object
+  }
+})
+
+const purchaseSchema = new mongoose.Schema({
+  userId: mongoose.Schema.Types.ObjectId,
+  item: String,
+  price: Number,
+  decision: String,
+  createdAt: { type: Date, default: Date.now }
+})
+
+export const User = mongoose.model('User', userSchema)
+export const Purchase = mongoose.model('Purchase', purchaseSchema)
