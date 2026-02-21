@@ -1,31 +1,120 @@
-// Detect if we're on a checkout page
-const checkoutKeywords = ['checkout', 'cart', 'basket', 'order-summary', 'buy-now'];
-const isCheckout = checkoutKeywords.some(keyword => 
-  window.location.href.includes(keyword) || 
-  document.title.toLowerCase().includes(keyword)
-);
 
-if (isCheckout) {
-  showPauseModal();
-}
+
+// Detect if we're on a checkout page
+// const checkoutKeywords = ['checkout', 'cart', 'basket', 'order-summary', 'buy-now'];
+// const isCheckout = checkoutKeywords.some(keyword => 
+//   window.location.href.includes(keyword) || 
+//   document.title.toLowerCase().includes(keyword)
+// );
+
+// if (isCheckout) {
+//   showPauseModal();
+// }
+
+document.addEventListener('click', (e) => {
+  // const checkoutButton = e.target.closest('button, a, input[type="submit"]');
+  // if(!checkoutButton) return;
+
+  const checkoutButton = e.target;
+
+  const text = (
+    checkoutButton.innerText ||
+    checkoutButton.value ||
+    checkoutButton.getAttribute('aria-label') ||
+    checkoutButton.getAttribute('data-action') || ''  ).toLowerCase().trim();
+
+  console.log('clicked:', text)
+    
+  const checkoutPhrases = [
+    'proceed to checkout',
+    'continue to checkout',
+    'checkout',
+    'place order',
+    'buy now',
+    'pay now'
+  ];
+
+  if (checkoutPhrases.some(phrase => text.includes(phrase))) {
+    e.preventDefault();
+    e.stopPropagation();
+    showPauseModal();
+  }
+  
+}, true);
 
 function showPauseModal() {
-  const modal = document.createElement('div');
-  modal.innerHTML = `
-    <div id="pause-overlay" style="
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+
+  const shadow = host.attachShadow({ mode: 'open' });
+
+
+
+  shadow.innerHTML = `
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background-color: rgba(0,0,0,0.7) !important;
       z-index: 999999;
-      display: flex; align-items: center; justify-content: center;
-    ">
-      <div style="background: white; padding: 30px; border-radius: 12px; max-width: 400px;">
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #pause-modal {
+      background-color: white !important;
+      padding: 30px;
+      border-radius: 12px;
+      width: 400px;
+    }
+    h2 { font-size: 22px; font-weight: bold; margin-bottom: 12px; color: black; }
+    p  { font-size: 14px; margin-bottom: 20px; color: #333; }
+    button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; margin-right: 8px; }
+    #talk-me-out { background: #4CAF50; color: white; }
+    #continue-anyway { background: #ccc; color: #666; }
+    #continue-anyway:not([disabled]) { background: #e5584e; color: white; cursor: pointer; }
+  </style>
+    <div id="overlay" >
+      <div id="pause-modal">
         <h2>⏸ Pause & Think</h2>
         <p>Before you buy — let's check in.</p>
         <button id="talk-me-out">Talk me out of it</button>
-        <button id="continue-anyway">I still want it</button>
+        <button id="continue-anyway" disabled>I still want it</button>
       </div>
     </div>
   `;
-  document.body.appendChild(modal);
+  
+  // shadow.body.appendChild(modal);
+
+  let timer = 5;
+  const btn = shadow.getElementById("continue-anyway");
+  btn.innerText = `I still want it (${timer})`;
+
+  const interval = setInterval(() => {
+    timer--;
+    if (timer > 0) {
+      btn.innerText = `I still want it (${timer})`;
+    } else {
+      clearInterval(interval);
+      btn.innerText = "I still want it";
+      btn.disabled = false;
+    }
+  }, 1000);
+
+  shadow.getElementById("talk-me-out").addEventListener('click', () => {
+    alert("Here's a quick checklist to consider:\n\n1. Do I really need this?\n2. Can I afford it?\n3. Will I use it often?\n4. Is there a cheaper alternative?\n5. Can I wait for a sale?");
+    host.remove();
+  });
+
+  shadow.getElementById("continue-anyway").addEventListener('click', () => {
+    host.remove();
+  });
+  
 }
