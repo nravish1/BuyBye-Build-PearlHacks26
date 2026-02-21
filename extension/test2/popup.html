@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pause & Think</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 280px;
+      padding: 12px;
+      background: #fafafa;
+    }
+
+    h2 { margin: 0 0 8px 0; }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+
+    button {
+      margin-top: 8px;
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: #e5e7eb;
+      color: rgb(0, 0, 0);
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
+
+    input {
+      width: 70px;
+      margin-left: 6px;
+    }
+
+    small { color: #666; }
+
+    #result {
+      white-space: pre-wrap;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .disable-wrapper { position: relative; }
+
+    #disableMenu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    #disableMenu.hidden { display: none; }
+
+    .disable-option {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 8px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      border-bottom: 1px solid #f0f0f0;
+      border-radius: 0;
+      color: #111;
+      cursor: pointer;
+    }
+
+    .disable-option:last-child { border-bottom: none; }
+    .disable-option:hover { background: #f5f5f5; }
+  </style>
+</head>
+
+<body>
+  <h2>Pause & Think</h2>
+
+  <div class="card">
+    <label>
+      Hourly wage:
+      $<input id="wage" type="number" min="1" step="1" value="20">
+    </label>
+  </div>
+
+  <div class="card">
+    <strong>Last detected item</strong>
+    <div id="last">No purchase detected yet.</div>
+  </div>
+
+  <div class="card">
+    <button id="wait" class="secondary">Dashboard</button>
+    <button id="resume" class="secondary">Resume purchase</button>
+    <div class="disable-wrapper">
+      <button id="disableBtn">Disable ▾</button>
+      <div id="disableMenu" class="hidden">
+        <button class="disable-option" data-hours="1">1 hour</button>
+        <button class="disable-option" data-hours="4">4 hours</button>
+        <button class="disable-option" data-hours="8">8 hours</button>
+        <button class="disable-option" data-hours="0">Until re-enabled</button>
+      </div>
+    </div>
+    
+    <div id="result"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
   "name": "Pause & Think",
   "version": "1.0",
   "description": "Pause before impulse purchases",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "alarms", "notifications"],
   "host_permissions": ["https://*/*"],
   "content_scripts": [
     {
@@ -13,7 +13,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": "icons/icon.png"
+    "default_icon": "icons/butterfly.png"
   },
   "background": {
     "service_worker": "background.js"
