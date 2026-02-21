@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Pause & Think",
+  "version": "1.0",
+  "description": "Pause before impulse purchases",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["https://*/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://*/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
