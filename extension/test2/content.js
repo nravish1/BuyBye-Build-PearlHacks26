@@ -68,7 +68,7 @@ function showPauseModal() {
       align-items: center;
       justify-content: center;
     }
-    #modal {
+    #pause-modal {
       background-color: white !important;
       padding: 30px;
       border-radius: 12px;
