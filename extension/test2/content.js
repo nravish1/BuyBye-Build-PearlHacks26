@@ -1,5 +1,3 @@
-
-
 // Detect if we're on a checkout page
 // const checkoutKeywords = ['checkout', 'cart', 'basket', 'order-summary', 'buy-now'];
 // const isCheckout = checkoutKeywords.some(keyword => 
