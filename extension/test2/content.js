@@ -324,17 +324,24 @@ function showPauseModal() {
     const cartList = document.querySelector('[data-testid="cart-items-list"]') || document;
     const nameElements = cartList.querySelectorAll('[data-testid="productName"] span');
 
-    if (nameElements.length === 0) {
-      const backupLinks = cartList.querySelectorAll('a[data-automation-id="name"]');
-      if (backupLinks.length > 0) {
-        return Array.from(backupLinks).map(el => el.getAttribute('aria-label') || el.innerText).join(', ');
-      }
-      return 'Items in Cart';
+  if (nameElements.length === 0) {
+    const backupLinks = cartList.querySelectorAll('a[data-automation-id="name"]');
+    if (backupLinks.length > 0) {
+      return Array.from(backupLinks).map(el => el.getAttribute('aria-label') || el.innerText).join(', ');
     }
-
-    const names = Array.from(nameElements)
-      .map(el => el.innerText.trim())
-      .filter(text => text.length > 0);
+const amazonTitles = document.querySelectorAll('.a-truncate-cut')
+if (amazonTitles.length > 0) {
+  const names = Array.from(amazonTitles)
+    .map(el => el.textContent.trim())
+    .filter(text => text.length > 5)
+    .filter((v, i, a) => a.indexOf(v) === i)
+  if (names.length > 0) return names.join(', ')
+}
+    return "Items in Cart";
+  }
+  const names = Array.from(nameElements)
+    .map(el => el.innerText.trim())
+    .filter(text => text.length > 0);
 
     return [...new Set(names)].join(', ');
   }
