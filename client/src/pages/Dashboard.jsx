@@ -95,6 +95,108 @@ function PurchaseRow({ item, name, price, cost, amount, category, tag, createdAt
   );
 }
 
+// ── Budget Editor ────────────────────────────────────────────────────────────
+function BudgetEditor({ budget, userId, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState(null);
+  const [form, setForm] = useState({
+    total:         budget?.total || "",
+    clothing:      budget?.categories?.clothing?.limit  || budget?.categories?.clothing  || "",
+    food:          budget?.categories?.food?.limit      || budget?.categories?.food       || "",
+    beauty:        budget?.categories?.beauty?.limit    || budget?.categories?.beauty     || "",
+    entertainment: budget?.categories?.entertainment?.limit || budget?.categories?.entertainment || "",
+  });
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    if (!form.total || isNaN(form.total)) { setError("Please enter a valid total budget"); return; }
+    setSaving(true); setError(null);
+    try {
+      const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+      await fetch(`${BASE_URL}/user/${userId}/budget`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          total: Number(form.total),
+          categories: {
+            clothing:      { limit: Number(form.clothing)      || 0, spent: budget?.categories?.clothing?.spent      || 0 },
+            food:          { limit: Number(form.food)          || 0, spent: budget?.categories?.food?.spent          || 0 },
+            beauty:        { limit: Number(form.beauty)        || 0, spent: budget?.categories?.beauty?.spent        || 0 },
+            entertainment: { limit: Number(form.entertainment) || 0, spent: budget?.categories?.entertainment?.spent || 0 },
+          }
+        }),
+      });
+      await onSaved();
+      setEditing(false);
+    } catch (e) {
+      setError("Failed to save — please try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "7px 10px",
+    border: "1px solid var(--dusty)", borderRadius: "8px",
+    fontSize: "13px", color: "var(--text-primary)",
+    background: "white", outline: "none", fontFamily: "inherit",
+    marginTop: "3px", boxSizing: "border-box",
+  };
+
+  const rowStyle = { marginBottom: "10px" };
+  const labelStyle = { fontSize: "11px", fontWeight: 600, color: "var(--text-secondary)", display: "block" };
+
+  if (editing) return (
+    <div style={{ width: "100%", marginTop: "16px", borderTop: "1px solid var(--card-border)", paddingTop: "14px" }}>
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-light)" }}>Edit Budget</p>
+        <button onClick={() => { setEditing(false); setError(null); }}
+          style={{ fontSize: "12px", color: "var(--text-light)", background: "none", border: "none", cursor: "pointer" }}>
+          Cancel
+        </button>
+      </div>
+
+      <div style={rowStyle}>
+        <label style={labelStyle}>Monthly Total ($)</label>
+        <input type="number" min="1" placeholder="300" value={form.total} onChange={set("total")} style={inputStyle} />
+      </div>
+
+      <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-light)", marginBottom: "8px", marginTop: "4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        Category Limits
+      </p>
+
+      {[
+        { key: "clothing",      label: "🧥 Clothing" },
+        { key: "food",          label: "🍜 Food & Drink" },
+        { key: "beauty",        label: "🌸 Beauty" },
+        { key: "entertainment", label: "🎬 Entertainment" },
+      ].map(({ key, label }) => (
+        <div key={key} style={rowStyle}>
+          <label style={labelStyle}>{label} ($)</label>
+          <input type="number" min="0" placeholder="0" value={form[key]} onChange={set(key)} style={inputStyle} />
+        </div>
+      ))}
+
+      {error && <p style={{ fontSize: "11px", color: "#b06060", marginBottom: "8px" }}>{error}</p>}
+
+      <button onClick={handleSave} disabled={saving} className="btn-primary w-full text-sm"
+        style={{ opacity: saving ? 0.7 : 1, marginTop: "4px" }}>
+        {saving ? "Saving..." : "Save Budget"}
+      </button>
+    </div>
+  );
+
+  return (
+    <button onClick={() => setEditing(true)}
+      className="btn-soft w-full text-xs mt-4"
+      style={{ marginTop: "14px" }}>
+      Edit Budget
+    </button>
+  );
+}
+
 // ── Goal Card ────────────────────────────────────────────────────────────────
 function GoalCard({ goal, userId, onSaved }) {
   const [editing, setEditing] = useState(!goal?.label);
@@ -444,6 +546,7 @@ export default function Dashboard() {
             ) : (
               <p className="text-xs mt-4 text-center" style={{ color: "var(--text-light)" }}>Bank connected</p>
             )}
+            <BudgetEditor budget={user?.budget} userId={userId} onSaved={refreshGoal} />
           </div>
 
           {/* Goal */}
