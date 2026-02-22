@@ -96,26 +96,144 @@ function PurchaseRow({ item, name, price, cost, amount, category, tag, createdAt
 }
 
 // ── Goal Card ────────────────────────────────────────────────────────────────
-function GoalCard({ label, saved, target }) {
-  const used = pct(saved, target);
-  const left = target - saved;
+function GoalCard({ goal, userId, onSaved }) {
+  const [editing, setEditing] = useState(!goal?.label);
+  const [saving,  setSaving]  = useState(false);
+  const [error,   setError]   = useState(null);
+  const [form, setForm] = useState({
+    label:        goal?.label        || "",
+    targetAmount: goal?.targetAmount || "",
+    savedAmount:  goal?.savedAmount  || "",
+    deadline:     goal?.deadline?.slice(0, 10) || "",
+  });
+
+  const saved  = Number(goal?.savedAmount)  || 0;
+  const target = Number(goal?.targetAmount) || 0;
+  const used   = target > 0 ? pct(saved, target) : 0;
+  const left   = Math.max(0, target - saved);
+  const daysLeft = goal?.deadline
+    ? Math.max(0, Math.ceil((new Date(goal.deadline) - new Date()) / 86400000))
+    : null;
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+  const handleSave = async () => {
+    if (!form.label.trim())   { setError("Please enter a goal name"); return; }
+    if (!form.targetAmount)   { setError("Please enter a target amount"); return; }
+    setSaving(true); setError(null);
+    try {
+      const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+      await fetch(`${BASE_URL}/user/${userId}/goal`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label:        form.label.trim(),
+          targetAmount: Number(form.targetAmount),
+          savedAmount:  Number(form.savedAmount) || 0,
+          deadline:     form.deadline || null,
+        }),
+      });
+      await onSaved();
+      setEditing(false);
+    } catch (e) {
+      setError("Failed to save — please try again");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "8px 11px",
+    border: "1px solid var(--dusty)", borderRadius: "10px",
+    fontSize: "13px", color: "var(--text-primary)",
+    background: "white", outline: "none", fontFamily: "inherit",
+    marginTop: "4px", boxSizing: "border-box",
+  };
+
+  // ── Edit form ─────────────────────────────────────────────────────────────
+  if (editing) return (
+    <div className="card" style={{ border: "1px solid var(--dusty)" }}>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-light)" }}>
+          {goal?.label ? "Edit Goal" : "Set a Goal"}
+        </p>
+        {goal?.label && (
+          <button onClick={() => { setEditing(false); setError(null); }}
+            style={{ fontSize: "12px", color: "var(--text-light)", background: "none", border: "none", cursor: "pointer" }}>
+            Cancel
+          </button>
+        )}
+      </div>
+
+      <div className="mb-3">
+        <label style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", display: "block" }}>What are you saving for?</label>
+        <input type="text" placeholder="e.g. Japan trip, new laptop..." value={form.label} onChange={set("label")} style={inputStyle} />
+      </div>
+      <div className="mb-3">
+        <label style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", display: "block" }}>Target amount ($)</label>
+        <input type="number" min="1" placeholder="2000" value={form.targetAmount} onChange={set("targetAmount")} style={inputStyle} />
+      </div>
+      <div className="mb-3">
+        <label style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", display: "block" }}>Already saved ($)</label>
+        <input type="number" min="0" placeholder="0" value={form.savedAmount} onChange={set("savedAmount")} style={inputStyle} />
+      </div>
+      <div className="mb-4">
+        <label style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-secondary)", display: "block" }}>
+          Target date <span style={{ color: "var(--text-light)", fontWeight: 400 }}>(optional)</span>
+        </label>
+        <input type="date" value={form.deadline} onChange={set("deadline")} style={inputStyle} />
+      </div>
+
+      {error && <p style={{ fontSize: "11px", color: "#b06060", marginBottom: "10px" }}>{error}</p>}
+
+      <button onClick={handleSave} disabled={saving} className="btn-primary w-full text-sm"
+        style={{ opacity: saving ? 0.7 : 1 }}>
+        {saving ? "Saving..." : "Save Goal ✨"}
+      </button>
+    </div>
+  );
+
+  // ── Display view ──────────────────────────────────────────────────────────
   return (
-    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, #a07878, #c4a0a0)", color: "white" }}>
+    <div className="rounded-2xl p-5 relative" style={{ background: "linear-gradient(135deg, #a07878, #c4a0a0)", color: "white" }}>
+      <button onClick={() => setEditing(true)} style={{
+        position: "absolute", top: "14px", right: "14px",
+        background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)",
+        borderRadius: "20px", padding: "3px 10px",
+        fontSize: "11px", color: "white", cursor: "pointer",
+      }}>Edit</button>
+
       <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ opacity: 0.65 }}>Long-term Goal</p>
-      <h3 className="text-lg mb-4" style={{ fontFamily: "'Lora', serif", fontStyle: "italic", color: "white" }}>{label}</h3>
-      <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.25)" }}>
+      <h3 className="text-lg mb-1" style={{ fontFamily: "'Lora\'', serif", fontStyle: "italic", color: "white" }}>
+        {goal.label}
+      </h3>
+
+      {daysLeft !== null && (
+        <p className="text-xs mb-3" style={{ opacity: 0.7 }}>
+          {daysLeft > 0 ? `${daysLeft} days to go` : "Deadline reached!"}
+        </p>
+      )}
+
+      <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.25)", marginTop: "12px" }}>
         <div className="h-full rounded-full transition-all duration-700"
           style={{ width: `${used}%`, background: "rgba(255,255,255,0.85)" }} />
       </div>
+
       <div className="flex justify-between text-sm">
         <span className="font-semibold">${saved.toLocaleString()} saved</span>
         <span style={{ opacity: 0.65 }}>${left.toLocaleString()} to go</span>
       </div>
-      <p className="text-xs mt-3" style={{ opacity: 0.55, fontStyle: "italic" }}>Every paused purchase brings you closer ✨</p>
+
+      {target > 0 && (
+        <div className="mt-3 rounded-xl px-3 py-2" style={{ background: "rgba(255,255,255,0.15)" }}>
+          <p className="text-xs font-semibold" style={{ opacity: 0.9 }}>{used}% there</p>
+        </div>
+      )}
+
+      <p className="text-xs mt-3" style={{ opacity: 0.55, fontStyle: "italic" }}>Every paused purchase brings you closer</p>
     </div>
   );
 }
-
 // ── Stat Chip ────────────────────────────────────────────────────────────────
 function StatChip({ label, value, sub, bg, textColor }) {
   return (
@@ -224,6 +342,11 @@ export default function Dashboard() {
     setDataSource("bank");
   };
 
+  const refreshGoal = async () => {
+    const updated = await getUser(userId).catch(() => null);
+    if (updated) setUser(updated);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--blush)" }}>
@@ -325,13 +448,7 @@ export default function Dashboard() {
 
           {/* Goal */}
           <div className="fade-up fade-up-2">
-            {goal?.label ? (
-              <GoalCard label={goal.label} saved={goal.savedAmount || 0} target={goal.targetAmount || 1000} />
-            ) : (
-              <div className="card text-center py-6">
-                <p className="text-sm" style={{ color: "var(--text-light)" }}>No goal set yet</p>
-              </div>
-            )}
+            <GoalCard goal={goal} userId={userId} onSaved={refreshGoal} />
           </div>
 
           {/* Stats */}
