@@ -168,6 +168,14 @@ function extractItemName() {
     if (backupLinks.length > 0) {
       return Array.from(backupLinks).map(el => el.getAttribute('aria-label') || el.innerText).join(', ');
     }
+const amazonTitles = document.querySelectorAll('.a-truncate-cut')
+if (amazonTitles.length > 0) {
+  const names = Array.from(amazonTitles)
+    .map(el => el.textContent.trim())
+    .filter(text => text.length > 5)
+    .filter((v, i, a) => a.indexOf(v) === i)
+  if (names.length > 0) return names.join(', ')
+}
     return "Items in Cart";
   }
   const names = Array.from(nameElements)
