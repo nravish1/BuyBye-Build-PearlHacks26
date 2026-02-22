@@ -80,10 +80,18 @@ function PurchaseRow({ item, name, price, cost, amount, category, tag, createdAt
       <div className="flex items-center gap-3">
         <div className="w-2 h-2 rounded-full flex-shrink-0"
           style={{ background: isPaused ? "#b8885a" : "#7a9e7a" }} />
-        <div>
-          <p className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{displayName}</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>{category} · {displayDate}</p>
-        </div>
+              <div>
+                  <p className="text-sm font-semibold leading-tight" style={{
+                      color: "var(--text-primary)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "160px"
+                  }}>
+                      {displayName}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>{category} · {displayDate}</p>
+              </div>
       </div>
       <div className="flex items-center gap-3">
         {tag && <span className={tag === "want" ? "tag-want" : "tag-need"}>{tag}</span>}
@@ -168,10 +176,10 @@ function BudgetEditor({ budget, userId, onSaved }) {
       </p>
 
       {[
-        { key: "clothing",      label: "🧥 Clothing" },
-        { key: "food",          label: "🍜 Food & Drink" },
-        { key: "beauty",        label: "🌸 Beauty" },
-        { key: "entertainment", label: "🎬 Entertainment" },
+        { key: "clothing",      label: "Clothing" },
+        { key: "food",          label: "Food & Drink" },
+        { key: "beauty",        label: "Beauty" },
+        { key: "entertainment", label: "Entertainment" },
       ].map(({ key, label }) => (
         <div key={key} style={rowStyle}>
           <label style={labelStyle}>{label} ($)</label>
@@ -401,11 +409,38 @@ function buildCategoriesFromPlaid(transactions) {
     { name: "Entertainment", spent: Math.round(totals["Entertainment"]), total: 50 },
   ];
 }
+// ── Build categories from extension purchases ─────────────────────────────────
+function buildCategoriesFromExtension(purchases, budgetCategories) {
+  const CATEGORY_MAP = {
+    clothing:      { label: "Clothing" },
+    food:          { label: "Food & Drink" },
+    beauty:        { label: "Beauty" },
+    entertainment: { label: "Entertainment" },
+  };
+
+  const totals = { clothing: 0, food: 0, beauty: 0, entertainment: 0 };
+
+  purchases.forEach(p => {
+    const cat = (p.category || "").toLowerCase().replace(/[^a-z]/g, "");
+    const key = Object.keys(totals).find(k => cat.includes(k) || k.includes(cat));
+    if (key) totals[key] += Number(p.price || p.cost || 0);
+  });
+
+  return Object.entries(CATEGORY_MAP).map(([key, { label, emoji }]) => ({
+    name:  label,
+    emoji,
+    spent: Math.round(totals[key]),
+    total: budgetCategories?.[key]?.limit || budgetCategories?.[key] || 100,
+  }));
+}
+
+
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [activeTab, setActiveTab]           = useState("all");
   const [dataSource, setDataSource]         = useState("extension");
+  const [categorySource, setCategorySource] = useState("extension");
   const [user, setUser]                     = useState(null);
   const [purchases, setPurchases]           = useState([]);
   const [plaidTransactions, setPlaidTransactions] = useState([]);
@@ -440,6 +475,15 @@ export default function Dashboard() {
     load();
   }, [userId]);
 
+  useEffect(() => {
+    if (!userId) return;
+    const interval = setInterval(async () => {
+      const purchaseData = await getPurchases(userId).catch(() => null);
+      if (purchaseData) setPurchases(purchaseData);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
   const handlePlaidSuccess = (txns) => {
     setPlaidTransactions(txns);
     setBankConnected(true);
@@ -464,23 +508,22 @@ export default function Dashboard() {
   const totalBudget = budget.total || 300;
   const goal        = user?.goal || null;
 
-  const categories = bankConnected && plaidTransactions.length
+  // Two separate category datasets
+  const bankCategories = bankConnected && plaidTransactions.length
     ? buildCategoriesFromPlaid(plaidTransactions)
-    : budget.categories
-      ? Object.entries(budget.categories).map(([name, data]) => ({
-          name: name.charAt(0).toUpperCase() + name.slice(1),
-          spent: data.spent || 0,
-          total: data.limit || 100,
-          emoji: { clothing: "🧥", food: "🍜", beauty: "🌸", entertainment: "🎬" }[name] || "📦",
-        }))
-      : [
-          { name: "Clothing",      spent: 0, total: 200},
-          { name: "Food & Drink",  spent: 0, total: 100},
-          { name: "Beauty",        spent: 0, total: 60},
-          { name: "Entertainment", spent: 0, total: 50},
-        ];
+    : null;
 
-  const totalSpent  = categories.reduce((sum, c) => sum + c.spent, 0);
+  const extensionCategories = buildCategoriesFromExtension(purchases, budget.categories);
+
+  const categories = categorySource === "bank" && bankCategories
+    ? bankCategories
+    : extensionCategories;
+
+// AFTER — sum directly from non-paused purchases, regardless of category
+  const totalSpent = purchases
+    .filter(p => p.decision !== 'paused')
+    .reduce((sum, p) => sum + (Number(p.price) || 0), 0);
+
   const pausedCount = purchases.filter(p => p.decision === "paused" || p.paused).length;
   const savedAmount = purchases
     .filter(p => p.decision === "paused" || p.paused)
@@ -518,7 +561,7 @@ export default function Dashboard() {
           <span className="text-lg"> </span>
           <span className="text-lg font-semibold tracking-tight"
             style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}>
-            ByeBuy
+            BuyBye
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -551,9 +594,60 @@ export default function Dashboard() {
             ) : (
               <p className="text-xs mt-4 text-center" style={{ color: "var(--text-light)" }}>Bank connected</p>
             )}
+
+            {/* Hourly Wage — compact row under the ring */}
+            <div className="w-full mt-4 pt-4" style={{ borderTop: "1px solid var(--card-border)" }}>
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-light)" }}>Hourly Wage</p>
+                  {editingWage ? (
+                    <input
+                      type="number"
+                      className="w-28 rounded-lg px-2 py-1 text-sm outline-none mt-1"
+                      style={{ border: "1px solid var(--dusty)", background: "white", color: "var(--text-primary)", fontFamily: "inherit" }}
+                      value={wageInput}
+                      autoFocus
+                      placeholder="e.g. 20"
+                      onChange={e => setWageInput(e.target.value)}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter') {
+                          await updateUser(userId, { hourlyWage: Number(wageInput) });
+                          setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
+                          setEditingWage(false);
+                        }
+                        if (e.key === 'Escape') setEditingWage(false);
+                      }}
+                      onBlur={async () => {
+                        if (wageInput) {
+                          await updateUser(userId, { hourlyWage: Number(wageInput) });
+                          setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
+                        }
+                        setEditingWage(false);
+                      }}
+                    />
+                  ) : (
+                    <p className="text-lg font-bold mt-0.5" style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}>
+                      {hourlyWage > 0 ? `$${hourlyWage}/hr` : <span style={{ color: "var(--text-light)", fontSize: "13px", fontFamily: "inherit", fontWeight: 400 }}>Not set</span>}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setWageInput(hourlyWage || ''); setEditingWage(true); }}
+                  className="text-xs px-2 py-1 rounded-lg"
+                  style={{ background: "var(--petal)", color: "var(--accent-dark)", border: "1px solid var(--dusty)" }}
+                >
+                  {hourlyWage > 0 ? "Edit" : "+ Set"}
+                </button>
+              </div>
+              {hourlyWage > 0 && hoursWorked && (
+                <p className="text-xs mt-2" style={{ color: "var(--text-light)" }}>
+                  Savings so far = {hoursWorked} hrs of work
+                </p>
+              )}
+            </div>
+
             <BudgetEditor budget={user?.budget} userId={userId} onSaved={refreshGoal} />
           </div>
-        </div>
 
           {/* Goal */}
           <div className="fade-up fade-up-2">
@@ -566,54 +660,9 @@ export default function Dashboard() {
             <StatChip label="Saved" value={`$${Number(savedAmount).toFixed(2)}`} sub="from pausing" bg="#e8efe8" textColor="#3d6b3d" />
             {hourlyWage > 0 && (
               <StatChip label="Hours of Work" value={hoursWorked} sub={`@ $${hourlyWage}/hr`} bg="#e8eef5" textColor="#3d5a7a" />
-              )}
-              <div className="rounded-2xl p-4" style={{ background: "#f5f0e8", color: "#7a5a3d" }}>
-                {editingWage ? (
-                  <div className="flex flex-col gap-1">
-                    <input
-                      type="number"
-                      className="w-full rounded-lg px-2 py-1 text-sm outline-none"
-                      style={{ border: "1px solid #c4a882", background: "white", color: "#7a5a3d" }}
-                      value={wageInput}
-                      autoFocus
-                      onChange={e => setWageInput(e.target.value)}
-                      onKeyDown={async e => {
-                        if (e.key === 'Enter') {
-                            await updateUser(userId, { hourlyWage: Number(wageInput) });
-                            setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
-                            setEditingWage(false);
-                      }
-                      if (e.key === 'Escape') setEditingWage(false);
-                    }}
-                    onBlur={async () => {
-                      if (wageInput) {
-                        await updateUser(userId, { hourlyWage: Number(wageInput) });
-                        setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
-                      }
-                      setEditingWage(false);
-                    }}
-                    />
-                    <p className="text-xs" style={{ opacity: 0.6 }}>press enter to save</p>
-                    </div>
-                    ) : (
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-2xl font-bold" style={{ fontFamily: "'Lora', serif" }}>
-                          {hourlyWage > 0 ? `$${hourlyWage}` : '—'}
-                          </p>
-                          <p className="text-xs font-semibold mt-0.5">Hourly Wage</p>
-                          </div>
-                          <button
-                          onClick={() => { setWageInput(hourlyWage || ''); setEditingWage(true); }}
-                          className="text-xs px-2 py-1 rounded-lg"
-                          style={{ background: "rgba(0,0,0,0.06)", color: "#7a5a3d" }}
-                          >
-                            ✏️
-                            </button>
-                            </div>
-                          )}
-                          </div>
-                          </div>
+            )}
+          </div>
+        </div>
 
         {/* RIGHT COLUMN */}
         <div className="lg:col-span-2 flex flex-col gap-6">
@@ -624,14 +673,33 @@ export default function Dashboard() {
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-light)" }}>
                 Spending by Category
               </p>
-              {bankConnected && (
-                <span className="text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: "var(--petal)", color: "var(--accent)" }}>
-                  from bank
-                </span>
-              )}
+
+              {/* Source toggle */}
+              <div className="flex gap-1 rounded-xl p-1 text-xs" style={{ background: "var(--petal)" }}>
+                {[
+                  { key: "extension", label: "Extension" },
+                  ...(bankConnected ? [{ key: "bank", label: "Bank" }] : [])
+                ].map(({ key, label }) => (
+                  <button key={key} onClick={() => setCategorySource(key)}
+                    className="px-3 py-1 rounded-lg font-semibold transition-all"
+                    style={{
+                      background: categorySource === key ? "var(--card-bg)" : "transparent",
+                      color: categorySource === key ? "var(--accent)" : "var(--text-secondary)",
+                      boxShadow: categorySource === key ? "var(--shadow-soft)" : "none",
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-            {categories.map((c) => <SpendingBar key={c.name} {...c} />)}
+
+            {categories.every(c => c.spent === 0) && categorySource === "extension" ? (
+              <p className="text-sm text-center py-4" style={{ color: "var(--text-light)" }}>
+                No categorized purchases yet — trigger the extension to populate this!
+              </p>
+            ) : (
+              categories.map((c) => <SpendingBar key={c.name} {...c} />)
+            )}
           </div>
 
           {/* Recent Activity */}
