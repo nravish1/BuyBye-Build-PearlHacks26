@@ -103,7 +103,7 @@ app.post('/plaid/test-setup', async (req, res) => {
 // Main endpoint the extension calls
 //mock user and budget
 app.post('/check-purchase', async (req, res) => {
-  const { item, price, userId } = req.body
+  const { item, price, userId, decision } = req.body
   
   let budget = { total: 300, spent: 240, categories: { clothing: 200 } }
   const user = await User.findById(userId).catch(() => null)
@@ -111,7 +111,7 @@ app.post('/check-purchase', async (req, res) => {
 
   const advice = await getGeminiAdvice(item, price, budget)
   try {
-    await Purchase.create({ userId: userId, item, price, decision: 'paused' })}
+    await Purchase.create({ userId: userId, item, price, decision: decision || 'paused' })}
   catch (e) {
     console.log('[server] Error saving purchase');
   }

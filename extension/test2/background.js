@@ -180,6 +180,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   body: JSON.stringify({
     item: msg.payload.item,
     price: msg.payload.price,
+    decision: "Purchased",
     userId: "699a0423a945c8b3cf206362"
   }),
 })
