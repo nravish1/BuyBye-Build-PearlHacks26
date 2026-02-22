@@ -1,13 +1,3 @@
-// Detect if we're on a checkout page
-// const checkoutKeywords = ['checkout', 'cart', 'basket', 'order-summary', 'buy-now'];
-// const isCheckout = checkoutKeywords.some(keyword => 
-//   window.location.href.includes(keyword) || 
-//   document.title.toLowerCase().includes(keyword)
-// );
-
-// if (isCheckout) {
-//   showPauseModal();
-// }
 
 document.addEventListener('click', (e) => {
   // const checkoutButton = e.target.closest('button, a, input[type="submit"]');
