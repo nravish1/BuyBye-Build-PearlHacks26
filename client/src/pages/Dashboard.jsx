@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { usePlaidLink } from "react-plaid-link";
-import { getUser, getPurchases, createLinkToken, exchangeToken, getPlaidTransactions } from "../api";
+import { getUser, getPurchases, createLinkToken, exchangeToken, getPlaidTransactions, updateUser } from "../api";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
@@ -411,6 +411,8 @@ export default function Dashboard() {
   const [plaidTransactions, setPlaidTransactions] = useState([]);
   const [bankConnected, setBankConnected]   = useState(false);
   const [loading, setLoading]               = useState(true);
+  const [editingWage, setEditingWage] = useState(false);
+  const [wageInput, setWageInput]     = useState('');
 
   const userId = localStorage.getItem("userId");
 
@@ -483,6 +485,9 @@ export default function Dashboard() {
   const savedAmount = purchases
     .filter(p => p.decision === "paused" || p.paused)
     .reduce((sum, p) => sum + (p.price || p.cost || 0), 0);
+  
+  const hourlyWage  = user?.hourlyWage || 0;
+  const hoursWorked = hourlyWage > 0 ? (savedAmount / hourlyWage).toFixed(1) : null;
 
   // Build the list shown in Recent Activity based on selected source
   const activeList = dataSource === "bank"
@@ -531,7 +536,7 @@ export default function Dashboard() {
 
       {/* Main Grid */}
       <main className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+        
         {/* LEFT COLUMN */}
         <div className="lg:col-span-1 flex flex-col gap-6">
 
@@ -548,6 +553,7 @@ export default function Dashboard() {
             )}
             <BudgetEditor budget={user?.budget} userId={userId} onSaved={refreshGoal} />
           </div>
+        </div>
 
           {/* Goal */}
           <div className="fade-up fade-up-2">
@@ -558,8 +564,56 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3 fade-up fade-up-3">
             <StatChip label="Paused" value={pausedCount} sub="this month" bg="var(--petal)" textColor="var(--accent-dark)" />
             <StatChip label="Saved" value={`$${Number(savedAmount).toFixed(2)}`} sub="from pausing" bg="#e8efe8" textColor="#3d6b3d" />
-          </div>
-        </div>
+            {hourlyWage > 0 && (
+              <StatChip label="Hours of Work" value={hoursWorked} sub={`@ $${hourlyWage}/hr`} bg="#e8eef5" textColor="#3d5a7a" />
+              )}
+              <div className="rounded-2xl p-4" style={{ background: "#f5f0e8", color: "#7a5a3d" }}>
+                {editingWage ? (
+                  <div className="flex flex-col gap-1">
+                    <input
+                      type="number"
+                      className="w-full rounded-lg px-2 py-1 text-sm outline-none"
+                      style={{ border: "1px solid #c4a882", background: "white", color: "#7a5a3d" }}
+                      value={wageInput}
+                      autoFocus
+                      onChange={e => setWageInput(e.target.value)}
+                      onKeyDown={async e => {
+                        if (e.key === 'Enter') {
+                            await updateUser(userId, { hourlyWage: Number(wageInput) });
+                            setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
+                            setEditingWage(false);
+                      }
+                      if (e.key === 'Escape') setEditingWage(false);
+                    }}
+                    onBlur={async () => {
+                      if (wageInput) {
+                        await updateUser(userId, { hourlyWage: Number(wageInput) });
+                        setUser(prev => ({ ...prev, hourlyWage: Number(wageInput) }));
+                      }
+                      setEditingWage(false);
+                    }}
+                    />
+                    <p className="text-xs" style={{ opacity: 0.6 }}>press enter to save</p>
+                    </div>
+                    ) : (
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-2xl font-bold" style={{ fontFamily: "'Lora', serif" }}>
+                          {hourlyWage > 0 ? `$${hourlyWage}` : '—'}
+                          </p>
+                          <p className="text-xs font-semibold mt-0.5">Hourly Wage</p>
+                          </div>
+                          <button
+                          onClick={() => { setWageInput(hourlyWage || ''); setEditingWage(true); }}
+                          className="text-xs px-2 py-1 rounded-lg"
+                          style={{ background: "rgba(0,0,0,0.06)", color: "#7a5a3d" }}
+                          >
+                            ✏️
+                            </button>
+                            </div>
+                          )}
+                          </div>
+                          </div>
 
         {/* RIGHT COLUMN */}
         <div className="lg:col-span-2 flex flex-col gap-6">

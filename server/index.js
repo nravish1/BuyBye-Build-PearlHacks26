@@ -225,7 +225,12 @@ app.get('/plaid/transactions/:userId', async (req, res) => {
   res.json(response.data.transactions)
 })
 
+app.patch('/user/:userId', async (req, res) => {
+  const user = await User.findByIdAndUpdate(req.params.userId, req.body, { new: true })
+  res.json(user)
+})
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
 })
+

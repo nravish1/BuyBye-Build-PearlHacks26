@@ -77,3 +77,12 @@ export const getPlaidTransactions = async (userId) => {
   const res = await fetch(`${BASE_URL}/plaid/transactions/${userId}`)
   return res.json()
 }
+
+export const updateUser = async (userId, data) => {
+  const res = await fetch(`${BASE_URL}/user/${userId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  return res.json()
+}
