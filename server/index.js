@@ -100,6 +100,20 @@ app.post('/plaid/test-setup', async (req, res) => {
   res.json({ success: true, message: 'Sandbox access token saved' })
 })
 
+app.patch('/user/:userId/budget', async (req, res) => {
+  const { total, categories } = req.body
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      { $set: { 'budget.total': total, 'budget.categories': categories } },
+      { new: true }
+    )
+    res.json({ success: true, budget: user.budget })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
 app.patch('/user/:userId/goal', async (req, res) => {
   const { label, targetAmount, savedAmount, deadline } = req.body
   try {
