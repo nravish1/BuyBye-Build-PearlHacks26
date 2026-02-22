@@ -146,4 +146,13 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.local.set({ hourlyWage: 20 }, () => console.log('[background] set default hourlyWage=20'));
     }
   });
+
 }); 
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'PURCHASE_MADE') {
+    console.log('got price:', msg.payload.price)
+    console.log('got item:', msg.payload.item)
+    console.log('got site:', msg.payload.site)
+  }
+})
