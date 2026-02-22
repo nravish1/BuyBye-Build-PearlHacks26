@@ -29,19 +29,19 @@ function BudgetRing({ spent, total }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold" style={{ color: "var(--text-primary)", fontFamily: "'Lora', serif" }}>
-            ${remaining}
+            ${Math.max(0, remaining).toFixed(2)}
           </span>
           <span className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>remaining</span>
         </div>
       </div>
       <div className="flex gap-6 text-sm">
         <div className="text-center">
-          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>${spent}</p>
+          <p className="font-semibold">${Number(spent).toFixed(2)}</p>
           <p className="text-xs" style={{ color: "var(--text-light)" }}>spent</p>
         </div>
         <div className="w-px" style={{ background: "var(--dusty)" }} />
         <div className="text-center">
-          <p className="font-semibold" style={{ color: "var(--text-primary)" }}>${total}</p>
+          <p className="font-semibold">${Number(total).toFixed(2)}</p>
           <p className="text-xs" style={{ color: "var(--text-light)" }}>budget</p>
         </div>
       </div>
@@ -110,10 +110,10 @@ function BudgetEditor({ budget, userId, onSaved }) {
   const [error,   setError]   = useState(null);
   const [form, setForm] = useState({
     total:         budget?.total || "",
-    clothing:      budget?.categories?.clothing?.limit  || budget?.categories?.clothing  || "",
-    food:          budget?.categories?.food?.limit      || budget?.categories?.food       || "",
-    beauty:        budget?.categories?.beauty?.limit    || budget?.categories?.beauty     || "",
-    entertainment: budget?.categories?.entertainment?.limit || budget?.categories?.entertainment || "",
+    clothing:      budget?.categories?.clothing?.limit      ?? "",
+    food:          budget?.categories?.food?.limit          ?? "",
+    beauty:        budget?.categories?.beauty?.limit        ?? "",
+    entertainment: budget?.categories?.entertainment?.limit ?? "",
   });
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
@@ -430,7 +430,7 @@ function buildCategoriesFromExtension(purchases, budgetCategories) {
     name:  label,
     emoji,
     spent: Math.round(totals[key]),
-    total: budgetCategories?.[key]?.limit || budgetCategories?.[key] || 100,
+    total: budgetCategories?.[key]?.limit ?? 100,
   }));
 }
 
