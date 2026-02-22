@@ -146,4 +146,4 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.local.set({ hourlyWage: 20 }, () => console.log('[background] set default hourlyWage=20'));
     }
   });
-});
+}); 

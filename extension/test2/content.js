@@ -9,6 +9,8 @@
 //   showPauseModal();
 // }
 
+
+
 document.addEventListener('click', (e) => {
   // const checkoutButton = e.target.closest('button, a, input[type="submit"]');
   // if(!checkoutButton) return;
@@ -35,6 +37,12 @@ document.addEventListener('click', (e) => {
   if (checkoutPhrases.some(phrase => text.includes(phrase))) {
     e.preventDefault();
     e.stopPropagation();
+    const priceText = document.querySelector('.a-price, .price, [data-price]')?.innerText || '';
+    chrome.runtime.sendMessage({
+      type: 'PAUSE_SHOW_MODAL',
+      payload: { priceText, title: document.title, url: window.location.href }
+    });
+
     showPauseModal();
   }
   
