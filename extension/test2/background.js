@@ -1,19 +1,14 @@
 // background.js (MV3 service worker)
-// Central router / network manager for the extension (reminder + resume removed).
+const SERVER_BASE = 'http://localhost:3000';
+const CHECK_PURCHASE_PATH = '/check-purchase';
 
-//server address
-const SERVER_BASE = 'http://localhost:3000'; // adjust if needed
-const CHECK_PURCHASE_PATH = '/check-purchase'; // server endpoint in index.js
-
-//prints message to service worker console when loaded, useful for debugging and confirming background script is running
 console.log('[background] service worker loaded');
 
-// Helper: promisified chrome.tabs.captureVisibleTab
-// capture screenshot of tab
-// promise (js) makes sure function finishes before proceeding
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function captureVisibleTabPromise(windowId, options = { format: 'png' }) {
   return new Promise((resolve, reject) => {
-    try { 
+    try {
       chrome.tabs.captureVisibleTab(windowId, options, (dataUrl) => {
         if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
         resolve(dataUrl);
@@ -24,9 +19,6 @@ function captureVisibleTabPromise(windowId, options = { format: 'png' }) {
   });
 }
 
-// Helper: safe JSON parse / response wrapper
-// sends post request to server and returns response
-// returns if post request was successful, status code, and response data
 async function postToServer(path, bodyObj) {
   const url = `${SERVER_BASE}${path}`;
   console.log(`[background] POST -> ${url}`, { bodyKeys: Object.keys(bodyObj || {}) });
@@ -41,22 +33,69 @@ async function postToServer(path, bodyObj) {
   return { ok: resp.ok, status: resp.status, body: json };
 }
 
-// Message router
-// listens for messages from popup/content
+function getStoredAuth() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['userId', 'userName'], (r) => {
+      resolve({ userId: r.userId || null, userName: r.userName || null });
+    });
+  });
+}
+
+// ── Message router ────────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  try { 
+  try {
     if (!msg || !msg.type) {
       sendResponse({ ok: false, error: 'invalid_message' });
       return false;
     }
-    // close invalid message
+
     console.log('[background] onMessage', msg.type, msg.payload || null);
 
-    // Save pause modal info (from content script when user triggers pause)
-    // msg.payload should contain: { title, priceText, url }
-    // takes cart info from content and saves to local storage, then forwards to popup for display
+    // ── LOGIN ─────────────────────────────────────────────────────────────────
+    if (msg.type === 'LOGIN') {
+      (async () => {
+        try {
+          const { email, password } = msg.payload;
+          const resp = await fetch(`${SERVER_BASE}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await resp.json();
+
+          if (data.error) {
+            sendResponse({ ok: false, error: data.error });
+            return;
+          }
+
+          await chrome.storage.local.set({ userId: data.userId, userName: data.name });
+          console.log('[background] logged in as', data.name, data.userId);
+          sendResponse({ ok: true, userId: data.userId, userName: data.name });
+        } catch (e) {
+          sendResponse({ ok: false, error: e.message });
+        }
+      })();
+      return true;
+    }
+
+    // ── LOGOUT ────────────────────────────────────────────────────────────────
+    if (msg.type === 'LOGOUT') {
+      chrome.storage.local.remove(['userId', 'userName'], () => {
+        console.log('[background] logged out');
+        sendResponse({ ok: true });
+      });
+      return true;
+    }
+
+    // ── GET_AUTH ──────────────────────────────────────────────────────────────
+    if (msg.type === 'GET_AUTH') {
+      getStoredAuth().then((auth) => sendResponse(auth));
+      return true;
+    }
+
+    // ── PAUSE_SHOW_MODAL ──────────────────────────────────────────────────────
     if (msg.type === 'PAUSE_SHOW_MODAL') {
-      const cart = { 
+      const cart = {
         priceText: msg.payload?.priceText || null,
         title: msg.payload?.title || null,
         url: msg.payload?.url || sender?.tab?.url || null,
@@ -66,27 +105,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const history = r.cartHistory || [];
         history.push(cart);
         chrome.storage.local.set({ cartHistory: history, lastCart: cart }, () => {
-
-        console.log('[background] lastCart saved', cart);
-        // notify any open popup or content listeners
-        chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: { info: 'cart_saved', cart } });
-        sendResponse({ ok: true, cart });
+          console.log('[background] lastCart saved', cart);
+          chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: { info: 'cart_saved', cart } });
+          sendResponse({ ok: true, cart });
         });
-        
-    
       });
-      
       return false;
     }
 
-    // Capture + upload to server (from popup or content)
-    // Expects optional payload with title / priceText to form server body.
-    // captures when user clicks talk me out of it so gemini can analyze 
-    // takes screenshot and cart info, sends to server for analysis, then forwards response to popup for display
+    // ── CAPTURE_UPLOAD ────────────────────────────────────────────────────────
     if (msg.type === 'CAPTURE_UPLOAD') {
       (async () => {
         try {
-          // find active tab/window
           const tabs = await new Promise((res) => chrome.tabs.query({ active: true, currentWindow: true }, res));
           const tab = (tabs && tabs[0]) || null;
           if (!tab) {
@@ -95,17 +125,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
 
           const dataUrl = await captureVisibleTabPromise(tab.windowId, { format: 'png' });
-          console.log('[background] captured screenshot length', dataUrl?.length || 0);
+          console.log('[background] screenshot captured, length:', dataUrl?.length || 0);
 
-          // Build body to match server /check-purchase
           const stored = await new Promise((res) => chrome.storage.local.get('lastCart', res));
-          const item = msg.payload?.title || (stored && stored.lastCart && stored.lastCart.title) || 'captured';
-          const priceText = msg.payload?.priceText || (stored && stored.lastCart && stored.lastCart.priceText) || '';
+          const item = msg.payload?.title || stored?.lastCart?.title || 'captured';
+          const priceText = msg.payload?.priceText || stored?.lastCart?.priceText || '';
           const price = Number((priceText || '').replace(/[^0-9.]/g, '')) || 0;
-          const userId = msg.payload?.userId || 'test-user-id';
+
+          // ── Get real userId from storage ───────────────────────────────────
+          const { userId, userName } = await getStoredAuth();
+
+          if (!userId) {
+            console.warn('[background] no userId — user not logged in');
+            sendResponse({ ok: false, error: 'not_logged_in', message: 'Please log in via the extension popup first.' });
+            return;
+          }
+
+          console.log('[background] sending purchase for user:', userName, userId);
 
           const serverPayload = { item, price, userId, screenshot: dataUrl };
-
           const { ok, status, body } = await postToServer(CHECK_PURCHASE_PATH, serverPayload);
 
           if (!ok) {
@@ -114,40 +152,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             return;
           }
 
-          // store lastCart (merge)
-          // updates the cart object from screenshot
-          const lastCart = {
-            title: item,
-            priceText,
-            url: tab.url || null,
-            savedAt: Date.now()
-          };
+          const lastCart = { title: item, priceText, url: tab.url || null, savedAt: Date.now() };
           chrome.storage.local.set({ lastCart }, () => {
-            console.log('[background] lastCart updated after analysis', lastCart);
+            console.log('[background] lastCart updated after analysis');
           });
 
-          // forward to popup/content
           chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: body });
           sendResponse({ ok: true, analysis: body });
+
         } catch (e) {
-          console.error('[background] CAPTURE_UPLOAD error', e?.message || JSON.stringify(e));
+          console.error('[background] CAPTURE_UPLOAD error', e?.message || e);
           sendResponse({ ok: false, error: e?.message || String(e) });
         }
       })();
-
-      return true; // keep sendResponse channel open
+      return true;
     }
 
-    // Provide popup the latest saved/lastCart etc.
+    // ── PURCHASE_MADE — user clicked "I still want it" ────────────────────────
+    if (msg.type === 'PURCHASE_MADE') {
+      (async () => {
+        try {
+          const { price, item, site } = msg.payload;
+          const { userId } = await getStoredAuth();
+
+          console.log('[background] PURCHASE_MADE — item:', item, 'price:', price, 'userId:', userId);
+
+          if (!userId) {
+            console.warn('[background] PURCHASE_MADE — no userId, skipping');
+            sendResponse({ ok: false, error: 'not_logged_in' });
+            return;
+          }
+
+          const { ok, body } = await postToServer('/purchase-completed', {
+            userId,
+            item: item || 'Unknown item',
+            price: price || 0,
+            site: site || '',
+            decision: 'bought'
+          });
+
+          console.log('[background] purchase saved:', body);
+          sendResponse({ ok });
+
+        } catch (e) {
+          console.error('[background] PURCHASE_MADE error', e?.message);
+          sendResponse({ ok: false, error: e?.message });
+        }
+      })();
+      return true;
+    }
+
+    // ── FORCE_UPDATE_POPUP ────────────────────────────────────────────────────
     if (msg.type === 'FORCE_UPDATE_POPUP') {
-      // return keys that popup uses; removed savedItems/reminder/resume fields
-      chrome.storage.local.get(['lastCart','hourlyWage','disabledUntil','permanentDisable'], (r) => {
+      chrome.storage.local.get(['lastCart', 'hourlyWage', 'disabledUntil', 'permanentDisable', 'userId', 'userName'], (r) => {
         sendResponse(r);
       });
-      return true; // async
+      return true;
     }
 
-    // Unknown message type
     sendResponse({ ok: false, error: 'unknown_message_type' });
     return false;
 
@@ -156,9 +218,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: false, error: outerErr?.message || String(outerErr) });
     return false;
   }
-}); // end onMessage
+});
 
-// Optional: runtime.onInstalled for initial defaults
+// ── Defaults on install ───────────────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(['hourlyWage'], (r) => {
     if (r.hourlyWage == null) {
@@ -200,5 +262,4 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; 
   }
 });
-
 
