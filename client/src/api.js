@@ -44,6 +44,11 @@ export const checkPurchase = async (item, price, userId) => {
   return res.json()
 }
 
+export const getUser = async (userId) => {
+  const res = await fetch(`${BASE_URL}/user/${userId}`)
+  return res.json()
+}
+
 export const getPurchases = async (userId) => {
   const res = await fetch(`${BASE_URL}/purchases/${userId}`)
   return res.json()

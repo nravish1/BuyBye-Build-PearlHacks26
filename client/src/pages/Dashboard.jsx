@@ -1,25 +1,5 @@
-import { useState } from "react";
-
-// ── Dummy Data ──────────────────────────────────────────────────────────────
-const USER = { name: "Sarah" };
-const BUDGET = { total: 300, spent: 240, remaining: 60 };
-
-const CATEGORIES = [
-  { name: "Clothing",       spent: 180, total: 200, emoji: "🧥" },
-  { name: "Food & Drink",   spent: 60,  total: 100, emoji: "🍜" },
-  { name: "Beauty",         spent: 45,  total: 60,  emoji: "🌸" },
-  { name: "Entertainment",  spent: 20,  total: 50,  emoji: "🎬" },
-];
-
-const PURCHASES = [
-  { id: 1, item: "ASOS Wrap Dress",          cost: 65, category: "Clothing",       tag: "want", date: "Feb 20", paused: true  },
-  { id: 2, item: "Trader Joe's Grocery Run", cost: 42, category: "Food",           tag: "need", date: "Feb 19", paused: false },
-  { id: 3, item: "Rare Beauty Blush",        cost: 24, category: "Beauty",         tag: "want", date: "Feb 18", paused: true  },
-  { id: 4, item: "Spotify Premium",          cost: 10, category: "Entertainment",  tag: "need", date: "Feb 17", paused: false },
-  { id: 5, item: "Zara Linen Jacket",        cost: 89, category: "Clothing",       tag: "want", date: "Feb 16", paused: true  },
-];
-
-const GOAL = { label: "Trip to Japan", saved: 1360, target: 2000 };
+import { useState, useEffect } from "react";
+import { getUser, getPurchases } from "../api";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const pct = (a, b) => Math.min(100, Math.round((a / b) * 100));
@@ -31,9 +11,7 @@ function BudgetRing({ spent, total }) {
   const radius = 72;
   const circ = 2 * Math.PI * radius;
   const dash = (used / 100) * circ;
-
-  const stroke =
-    used >= 90 ? "#b06060" : used >= 70 ? "#b8885a" : "#9e7070";
+  const stroke = used >= 90 ? "#b06060" : used >= 70 ? "#b8885a" : "#9e7070";
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -57,7 +35,6 @@ function BudgetRing({ spent, total }) {
           <span className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>remaining</span>
         </div>
       </div>
-
       <div className="flex gap-6 text-sm">
         <div className="text-center">
           <p className="font-semibold" style={{ color: "var(--text-primary)" }}>${spent}</p>
@@ -76,8 +53,7 @@ function BudgetRing({ spent, total }) {
 // ── Spending Bar ─────────────────────────────────────────────────────────────
 function SpendingBar({ name, spent, total, emoji }) {
   const used = pct(spent, total);
-  const fillClass =
-    used >= 90 ? "danger" : used >= 70 ? "warning" : "";
+  const fillClass = used >= 90 ? "danger" : used >= 70 ? "warning" : "";
 
   return (
     <div className="mb-4 last:mb-0">
@@ -97,31 +73,25 @@ function SpendingBar({ name, spent, total, emoji }) {
 }
 
 // ── Purchase Row ─────────────────────────────────────────────────────────────
-function PurchaseRow({ item, cost, category, tag, date, paused }) {
+function PurchaseRow({ item, price, cost, category, tag, createdAt, date, paused, decision }) {
+  const displayCost = price || cost || 0;
+  const displayDate = createdAt
+    ? new Date(createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : date || "";
+  const isPaused = paused || decision === "paused";
+
   return (
-    <div
-      className="flex items-center justify-between py-3"
-      style={{ borderBottom: "1px solid var(--card-border)" }}
-    >
+    <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid var(--card-border)" }}>
       <div className="flex items-center gap-3">
-        <div
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ background: paused ? "#b8885a" : "#7a9e7a" }}
-        />
+        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: isPaused ? "#b8885a" : "#7a9e7a" }} />
         <div>
-          <p className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-            {item}
-          </p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>
-            {category} · {date}
-          </p>
+          <p className="text-sm font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>{item}</p>
+          <p className="text-xs mt-0.5" style={{ color: "var(--text-light)" }}>{category} · {displayDate}</p>
         </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className={tag === "want" ? "tag-want" : "tag-need"}>{tag}</span>
-        <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-          ${cost}
-        </span>
+        {tag && <span className={tag === "want" ? "tag-want" : "tag-need"}>{tag}</span>}
+        <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>${displayCost}</span>
       </div>
     </div>
   );
@@ -133,43 +103,22 @@ function GoalCard({ label, saved, target }) {
   const left = target - saved;
 
   return (
-    <div
-      className="rounded-2xl p-5"
-      style={{
-        background: "linear-gradient(135deg, #a07878, #c4a0a0)",
-        color: "white",
-      }}
-    >
-      <p
-        className="text-xs font-bold uppercase tracking-widest mb-1"
-        style={{ opacity: 0.65 }}
-      >
+    <div className="rounded-2xl p-5" style={{ background: "linear-gradient(135deg, #a07878, #c4a0a0)", color: "white" }}>
+      <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ opacity: 0.65 }}>
         Long-term Goal
       </p>
-      <h3
-        className="text-lg mb-4"
-        style={{ fontFamily: "'Lora', serif", fontStyle: "italic", color: "white" }}
-      >
+      <h3 className="text-lg mb-4" style={{ fontFamily: "'Lora', serif", fontStyle: "italic", color: "white" }}>
         {label}
       </h3>
-
-      <div
-        className="h-2 rounded-full overflow-hidden mb-3"
-        style={{ background: "rgba(255,255,255,0.25)" }}
-      >
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${used}%`, background: "rgba(255,255,255,0.85)" }}
-        />
+      <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: "rgba(255,255,255,0.25)" }}>
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${used}%`, background: "rgba(255,255,255,0.85)" }} />
       </div>
-
       <div className="flex justify-between text-sm">
         <span className="font-semibold">${saved.toLocaleString()} saved</span>
         <span style={{ opacity: 0.65 }}>${left.toLocaleString()} to go</span>
       </div>
-
       <p className="text-xs mt-3" style={{ opacity: 0.55, fontStyle: "italic" }}>
-        Every paused purchase brings you closer
+        Every paused purchase brings you closer ✨
       </p>
     </div>
   );
@@ -179,26 +128,84 @@ function GoalCard({ label, saved, target }) {
 function StatChip({ label, value, sub, bg, textColor }) {
   return (
     <div className="rounded-2xl p-4" style={{ background: bg, color: textColor }}>
-      <p
-        className="text-2xl font-bold"
-        style={{ fontFamily: "'Lora', serif" }}
-      >
-        {value}
-      </p>
+      <p className="text-2xl font-bold" style={{ fontFamily: "'Lora', serif" }}>{value}</p>
       <p className="text-xs font-semibold mt-0.5">{label}</p>
       {sub && <p className="text-xs mt-0.5" style={{ opacity: 0.6 }}>{sub}</p>}
     </div>
   );
 }
 
+// ── Category emoji map ────────────────────────────────────────────────────────
+const CATEGORY_EMOJIS = {
+  clothing:      "🧥",
+  food:          "🍜",
+  beauty:        "🌸",
+  entertainment: "🎬",
+  other:         "📦",
+};
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("all");
+  const [user, setUser] = useState(null);
+  const [purchases, setPurchases] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = PURCHASES.filter((p) => {
+  useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      window.location.href = "/";
+      return;
+    }
+
+    const load = async () => {
+      const userData = await getUser(userId);
+      const purchaseData = await getPurchases(userId);
+      setUser(userData);
+      setPurchases(purchaseData || []);
+      setLoading(false);
+    };
+
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--blush)" }}>
+        <p style={{ color: "var(--text-light)" }}>Loading...</p>
+      </div>
+    );
+  }
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const budget = user?.budget || {};
+  const spent = budget.spent || 0;
+  const total = budget.total || 300;
+  const goal = user?.goal || null;
+
+  const categories = budget.categories
+    ? Object.entries(budget.categories).map(([name, data]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        spent: data.spent || 0,
+        total: data.limit || 100,
+        emoji: CATEGORY_EMOJIS[name] || "📦",
+      }))
+    : [
+        { name: "Clothing",      spent: 0, total: 100 },
+        { name: "Food & Drink",  spent: 0, total: 100 },
+        { name: "Beauty",        spent: 0, total: 100 },
+        { name: "Entertainment", spent: 0, total: 100 },
+      ];
+
+  const pausedCount = purchases.filter(p => p.decision === "paused" || p.paused).length;
+  const savedAmount = purchases
+    .filter(p => p.decision === "paused" || p.paused)
+    .reduce((sum, p) => sum + (p.price || p.cost || 0), 0);
+
+  const filtered = purchases.filter((p) => {
     if (activeTab === "want")   return p.tag === "want";
     if (activeTab === "need")   return p.tag === "need";
-    if (activeTab === "paused") return p.paused;
+    if (activeTab === "paused") return p.decision === "paused" || p.paused;
     return true;
   });
 
@@ -216,23 +223,26 @@ export default function Dashboard() {
       >
         <div className="flex items-center gap-2">
           <span className="text-lg">⏸</span>
-          <span
-            className="text-lg font-semibold tracking-tight"
-            style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}
-          >
+          <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}>
             Pause & Think
           </span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Hey, {USER.name} 🌸
+            Hey, {user?.name} 
           </span>
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
             style={{ background: "var(--petal)", color: "var(--accent-dark)" }}
           >
-            {USER.name[0]}
+            {user?.name?.[0] || "?"}
           </div>
+          <button
+            className="btn-soft text-xs"
+            onClick={() => { localStorage.clear(); window.location.href = "/"; }}
+          >
+            Log out
+          </button>
         </div>
       </nav>
 
@@ -242,72 +252,45 @@ export default function Dashboard() {
         {/* LEFT COLUMN */}
         <div className="lg:col-span-1 flex flex-col gap-6">
 
-          {/* Budget Ring */}
           <div className="card fade-up fade-up-1 flex flex-col items-center">
-            <p
-              className="text-xs font-bold uppercase tracking-widest mb-5"
-              style={{ color: "var(--text-light)" }}
-            >
+            <p className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "var(--text-light)" }}>
               Monthly Budget
             </p>
-            <BudgetRing spent={BUDGET.spent} total={BUDGET.total} />
+            <BudgetRing spent={spent} total={total} />
           </div>
 
-          {/* Goal */}
           <div className="fade-up fade-up-2">
-            <GoalCard {...GOAL} />
+            {goal?.label ? (
+              <GoalCard label={goal.label} saved={goal.savedAmount || 0} target={goal.targetAmount || 1000} />
+            ) : (
+              <div className="card text-center py-6">
+                <p className="text-sm" style={{ color: "var(--text-light)" }}>No goal set yet</p>
+              </div>
+            )}
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-3 fade-up fade-up-3">
-            <StatChip
-              label="Paused"
-              value="12"
-              sub="this month"
-              bg="var(--petal)"
-              textColor="var(--accent-dark)"
-            />
-            <StatChip
-              label="Saved"
-              value="$340"
-              sub="from pausing"
-              bg="#e8efe8"
-              textColor="#3d6b3d"
-            />
+            <StatChip label="Paused" value={pausedCount} sub="this month" bg="var(--petal)" textColor="var(--accent-dark)" />
+            <StatChip label="Saved" value={`$${savedAmount}`} sub="from pausing" bg="#e8efe8" textColor="#3d6b3d" />
           </div>
         </div>
 
         {/* RIGHT COLUMN */}
         <div className="lg:col-span-2 flex flex-col gap-6">
 
-          {/* Spending Breakdown */}
           <div className="card fade-up fade-up-2">
-            <p
-              className="text-xs font-bold uppercase tracking-widest mb-5"
-              style={{ color: "var(--text-light)" }}
-            >
+            <p className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: "var(--text-light)" }}>
               Spending by Category
             </p>
-            {CATEGORIES.map((c) => (
-              <SpendingBar key={c.name} {...c} />
-            ))}
+            {categories.map((c) => <SpendingBar key={c.name} {...c} />)}
           </div>
 
-          {/* Purchase History */}
           <div className="card fade-up fade-up-3">
             <div className="flex justify-between items-center mb-5">
-              <p
-                className="text-xs font-bold uppercase tracking-widest"
-                style={{ color: "var(--text-light)" }}
-              >
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--text-light)" }}>
                 Recent Activity
               </p>
-
-              {/* Filter Tabs */}
-              <div
-                className="flex gap-1 rounded-xl p-1 text-xs"
-                style={{ background: "var(--petal)" }}
-              >
+              <div className="flex gap-1 rounded-xl p-1 text-xs" style={{ background: "var(--petal)" }}>
                 {["all", "need", "want", "paused"].map((tab) => (
                   <button
                     key={tab}
@@ -327,24 +310,18 @@ export default function Dashboard() {
 
             {filtered.length === 0 ? (
               <p className="text-sm text-center py-6" style={{ color: "var(--text-light)" }}>
-                Nothing here yet.
+                No purchases yet — go trigger the extension! 
               </p>
             ) : (
-              filtered.map((p) => <PurchaseRow key={p.id} {...p} />)
+              filtered.map((p) => <PurchaseRow key={p._id || p.id} {...p} />)
             )}
 
-            {/* Legend */}
-            <div
-              className="flex gap-5 mt-4 pt-4"
-              style={{ borderTop: "1px solid var(--card-border)" }}
-            >
+            <div className="flex gap-5 mt-4 pt-4" style={{ borderTop: "1px solid var(--card-border)" }}>
               <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-light)" }}>
-                <div className="w-2 h-2 rounded-full" style={{ background: "#b8885a" }} />
-                Paused by extension
+                <div className="w-2 h-2 rounded-full" style={{ background: "#b8885a" }} /> Paused by extension
               </div>
               <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--text-light)" }}>
-                <div className="w-2 h-2 rounded-full" style={{ background: "#7a9e7a" }} />
-                Completed
+                <div className="w-2 h-2 rounded-full" style={{ background: "#7a9e7a" }} /> Completed
               </div>
             </div>
           </div>

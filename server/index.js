@@ -5,12 +5,44 @@ import { connect } from './db.js'
 import { User, Purchase } from './models.js'
 import { getGeminiAdvice } from './gemini.js'
 
+
 const app = express()
 app.use(cors())
 app.use(express.json())
 
 await connect()
 
+// Register
+app.post('/register', async (req, res) => {
+  const { name, email, password } = req.body
+  const existing = await User.findOne({ email })
+  if (existing) return res.status(400).json({ error: 'Email already in use' })
+  const user = await User.create({ name, email, password })
+  res.json({ userId: user._id, name: user.name })
+})
+
+// Login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body
+  const user = await User.findOne({ email, password })
+  if (!user) return res.status(401).json({ error: 'Invalid email or password' })
+  res.json({ userId: user._id, name: user.name })
+})
+
+// USER data
+
+app.get('/user/:userId', async (req, res) => {
+  const user = await User.findById(req.params.userId)
+  if (!user) return res.status(404).json({ error: 'User not found' })
+  res.json(user)
+})
+
+app.get('/purchases/:userId', async (req, res) => {
+  const purchases = await Purchase.find({ userId: req.params.userId })
+    .sort({ createdAt: -1 })
+    .limit(10)
+  res.json(purchases)
+})
 
 app.get('/', (req, res) => {
   res.json({ message: 'Server is running' })
