@@ -293,10 +293,10 @@ function buildCategoriesFromPlaid(transactions) {
     if (totals[cat] !== undefined) totals[cat] += Math.abs(t.amount);
   });
   return [
-    { name: "Clothing",      spent: Math.round(totals["Clothing"]),      total: 200, emoji: "🧥" },
-    { name: "Food & Drink",  spent: Math.round(totals["Food & Drink"]),  total: 100, emoji: "🍜" },
-    { name: "Beauty",        spent: Math.round(totals["Beauty"]),        total: 60,  emoji: "🌸" },
-    { name: "Entertainment", spent: Math.round(totals["Entertainment"]), total: 50,  emoji: "🎬" },
+    { name: "Clothing",      spent: Math.round(totals["Clothing"]),      total: 200 },
+    { name: "Food & Drink",  spent: Math.round(totals["Food & Drink"]),  total: 100 },
+    { name: "Beauty",        spent: Math.round(totals["Beauty"]),        total: 60 },
+    { name: "Entertainment", spent: Math.round(totals["Entertainment"]), total: 50 },
   ];
 }
 
@@ -408,7 +408,7 @@ export default function Dashboard() {
       <nav className="px-6 py-4 flex justify-between items-center sticky top-0 z-10"
         style={{ background: "rgba(253,250,249,0.85)", backdropFilter: "blur(10px)", borderBottom: "1px solid var(--card-border)" }}>
         <div className="flex items-center gap-2">
-          <span className="text-lg">⏸</span>
+          <span className="text-lg"> </span>
           <span className="text-lg font-semibold tracking-tight"
             style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}>
             ByeBuy
