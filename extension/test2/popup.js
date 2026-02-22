@@ -60,13 +60,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-
-  resumeBtn.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'RESUME_PURCHASE' }, (r) => {
-      resultEl.textContent = r?.resumed ? 'Resuming purchase...' : 'Could not resume';
-    });
-  });
-
   function showLastCart(cart) {
     const lastDiv = document.getElementById('last');
     if (!cart) { lastDiv.textContent = 'No purchase detected yet.'; return; }

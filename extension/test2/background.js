@@ -1,15 +1,19 @@
 // background.js (MV3 service worker)
 // Central router / network manager for the extension (reminder + resume removed).
 
+//server address
 const SERVER_BASE = 'http://localhost:3000'; // adjust if needed
 const CHECK_PURCHASE_PATH = '/check-purchase'; // server endpoint in index.js
 
+//prints message to service worker console when loaded, useful for debugging and confirming background script is running
 console.log('[background] service worker loaded');
 
 // Helper: promisified chrome.tabs.captureVisibleTab
+// capture screenshot of tab
+// promise (js) makes sure function finishes before proceeding
 function captureVisibleTabPromise(windowId, options = { format: 'png' }) {
   return new Promise((resolve, reject) => {
-    try {
+    try { 
       chrome.tabs.captureVisibleTab(windowId, options, (dataUrl) => {
         if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
         resolve(dataUrl);
@@ -21,6 +25,8 @@ function captureVisibleTabPromise(windowId, options = { format: 'png' }) {
 }
 
 // Helper: safe JSON parse / response wrapper
+// sends post request to server and returns response
+// returns if post request was successful, status code, and response data
 async function postToServer(path, bodyObj) {
   const url = `${SERVER_BASE}${path}`;
   console.log(`[background] POST -> ${url}`, { bodyKeys: Object.keys(bodyObj || {}) });
@@ -36,35 +42,47 @@ async function postToServer(path, bodyObj) {
 }
 
 // Message router
+// listens for messages from popup/content
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  try {
+  try { 
     if (!msg || !msg.type) {
       sendResponse({ ok: false, error: 'invalid_message' });
       return false;
     }
-
+    // close invalid message
     console.log('[background] onMessage', msg.type, msg.payload || null);
 
     // Save pause modal info (from content script when user triggers pause)
     // msg.payload should contain: { title, priceText, url }
+    // takes cart info from content and saves to local storage, then forwards to popup for display
     if (msg.type === 'PAUSE_SHOW_MODAL') {
-      const cart = {
+      const cart = { 
         priceText: msg.payload?.priceText || null,
         title: msg.payload?.title || null,
         url: msg.payload?.url || sender?.tab?.url || null,
         savedAt: Date.now()
       };
-      chrome.storage.local.set({ lastCart: cart }, () => {
+      chrome.storage.local.get(['cartHistory'], (r) => {
+        const history = r.cartHistory || [];
+        history.push(cart);
+        chrome.storage.local.set({ cartHistory: history, lastCart: cart }, () => {
+
         console.log('[background] lastCart saved', cart);
         // notify any open popup or content listeners
         chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: { info: 'cart_saved', cart } });
         sendResponse({ ok: true, cart });
+        });
+        
+    
       });
+      
       return false;
     }
 
     // Capture + upload to server (from popup or content)
     // Expects optional payload with title / priceText to form server body.
+    // captures when user clicks talk me out of it so gemini can analyze 
+    // takes screenshot and cart info, sends to server for analysis, then forwards response to popup for display
     if (msg.type === 'CAPTURE_UPLOAD') {
       (async () => {
         try {
@@ -97,6 +115,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           }
 
           // store lastCart (merge)
+          // updates the cart object from screenshot
           const lastCart = {
             title: item,
             priceText,
@@ -111,7 +130,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: body });
           sendResponse({ ok: true, analysis: body });
         } catch (e) {
-          console.error('[background] CAPTURE_UPLOAD error', e);
+          console.error('[background] CAPTURE_UPLOAD error', e?.message || JSON.stringify(e));
           sendResponse({ ok: false, error: e?.message || String(e) });
         }
       })();
