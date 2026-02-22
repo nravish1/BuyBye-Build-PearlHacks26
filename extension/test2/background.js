@@ -1,5 +1,5 @@
 // background.js (MV3 service worker)
-// Central router / network manager for the extension.
+// Central router / network manager for the extension (reminder + resume removed).
 
 const SERVER_BASE = 'http://localhost:3000'; // adjust if needed
 const CHECK_PURCHASE_PATH = '/check-purchase'; // server endpoint in index.js
@@ -45,8 +45,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     console.log('[background] onMessage', msg.type, msg.payload || null);
 
-    // 1) Save pause modal info (from content script when user triggers pause)
-    //    msg.payload should contain: { title, priceText, url }
+    // Save pause modal info (from content script when user triggers pause)
+    // msg.payload should contain: { title, priceText, url }
     if (msg.type === 'PAUSE_SHOW_MODAL') {
       const cart = {
         priceText: msg.payload?.priceText || null,
@@ -60,12 +60,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.runtime.sendMessage({ type: 'ANALYSIS_RESULT', payload: { info: 'cart_saved', cart } });
         sendResponse({ ok: true, cart });
       });
-      return false; // storage callback already called sendResponse synchronously above
+      return false;
     }
 
-    // 2) Capture + upload to server (from popup or content)
-    //    Expects optional payload with title / priceText to form server body.
-    //    This is asynchronous -> return true
+    // Capture + upload to server (from popup or content)
+    // Expects optional payload with title / priceText to form server body.
     if (msg.type === 'CAPTURE_UPLOAD') {
       (async () => {
         try {
@@ -81,8 +80,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           console.log('[background] captured screenshot length', dataUrl?.length || 0);
 
           // Build body to match server /check-purchase
-          const item = msg.payload?.title || (await chrome.storage.local.get('lastCart')).lastCart?.title || 'captured';
-          const priceText = msg.payload?.priceText || (await chrome.storage.local.get('lastCart')).lastCart?.priceText || '';
+          const stored = await new Promise((res) => chrome.storage.local.get('lastCart', res));
+          const item = msg.payload?.title || (stored && stored.lastCart && stored.lastCart.title) || 'captured';
+          const priceText = msg.payload?.priceText || (stored && stored.lastCart && stored.lastCart.priceText) || '';
           const price = Number((priceText || '').replace(/[^0-9.]/g, '')) || 0;
           const userId = msg.payload?.userId || 'test-user-id';
 
@@ -116,49 +116,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
       })();
 
-      return true; // important — keep sendResponse channel open
+      return true; // keep sendResponse channel open
     }
 
-    // 3) Schedule a reminder (saves savedItems and creates an alarm)
-    //    payload: { minutes } optional
-    if (msg.type === 'SCHEDULE_REMINDER') {
-      const minutes = Number(msg.payload?.minutes) || 1440; // default 1 day
-      chrome.alarms.create('pause_reminder', { delayInMinutes: minutes });
-      chrome.storage.local.get(['savedItems','lastCart'], (r) => {
-        const last = r.lastCart || {};
-        const saved = r.savedItems || [];
-        saved.push({
-          id: Date.now().toString(),
-          ...last,
-          remindAt: Date.now() + minutes * 60000
-        });
-        chrome.storage.local.set({ savedItems: saved }, () => {
-          console.log('[background] reminder scheduled, savedItems updated', { minutes, item: last.title });
-          sendResponse({ scheduled: true, minutes });
-        });
-      });
-      return true; // async sendResponse (storage callback)
-    }
-
-    // 4) Resume purchase (instruct content script to call resume behavior on page)
-    if (msg.type === 'RESUME_PURCHASE') {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tab = (tabs && tabs[0]) || null;
-        if (!tab) {
-          sendResponse({ resumed: false, error: 'no_active_tab' });
-          return;
-        }
-        chrome.tabs.sendMessage(tab.id, { type: 'DO_RESUME' }, (resp) => {
-          // sendResponse optional depending on content script implementation
-          sendResponse({ resumed: true });
-        });
-      });
-      return true; // async
-    }
-
-    // 5) Provide popup the latest saved/lastCart etc.
+    // Provide popup the latest saved/lastCart etc.
     if (msg.type === 'FORCE_UPDATE_POPUP') {
-      chrome.storage.local.get(['lastCart','savedItems','hourlyWage','disabledUntil','permanentDisable'], (r) => {
+      // return keys that popup uses; removed savedItems/reminder/resume fields
+      chrome.storage.local.get(['lastCart','hourlyWage','disabledUntil','permanentDisable'], (r) => {
         sendResponse(r);
       });
       return true; // async
@@ -174,22 +138,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return false;
   }
 }); // end onMessage
-
-// Alarm handler
-chrome.alarms.onAlarm.addListener((alarm) => {
-  console.log('[background] onAlarm', alarm);
-  if (alarm.name === 'pause_reminder') {
-    chrome.notifications.create('', {
-      type: 'basic',
-      iconUrl: 'icons/butterfly.png',
-      title: 'Pause & Think — revisit saved item',
-      message: 'Open Pause & Think to review your saved item.',
-      priority: 2
-    }, (id) => {
-      console.log('[background] notification created', id);
-    });
-  }
-});
 
 // Optional: runtime.onInstalled for initial defaults
 chrome.runtime.onInstalled.addListener(() => {
