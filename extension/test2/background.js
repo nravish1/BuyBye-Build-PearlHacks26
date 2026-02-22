@@ -169,38 +169,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     // ── PURCHASE_MADE — user clicked "I still want it" ────────────────────────
-    if (msg.type === 'PURCHASE_MADE') {
-      (async () => {
-        try {
-          const { price, item, site } = msg.payload;
-          const { userId } = await getStoredAuth();
+    // if (msg.type === 'PURCHASE_MADE') {
+    //   (async () => {
+    //     try {
+    //       const { price, item, site } = msg.payload;
+    //       const { userId } = await getStoredAuth();
 
-          console.log('[background] PURCHASE_MADE — item:', item, 'price:', price, 'userId:', userId);
+    //       console.log('[background] PURCHASE_MADE — item:', item, 'price:', price, 'userId:', userId);
 
-          if (!userId) {
-            console.warn('[background] PURCHASE_MADE — no userId, skipping');
-            sendResponse({ ok: false, error: 'not_logged_in' });
-            return;
-          }
+    //       if (!userId) {
+    //         console.warn('[background] PURCHASE_MADE — no userId, skipping');
+    //         sendResponse({ ok: false, error: 'not_logged_in' });
+    //         return;
+    //       }
 
-          const { ok, body } = await postToServer('/purchase-completed', {
-            userId,
-            item: item || 'Unknown item',
-            price: price || 0,
-            site: site || '',
-            decision: 'bought'
-          });
+    //       const { ok, body } = await postToServer('/purchase-completed', {
+    //         userId,
+    //         item: item || 'Unknown item',
+    //         price: price || 0,
+    //         site: site || '',
+    //         decision: 'bought'
+    //       });
 
-          console.log('[background] purchase saved:', body);
-          sendResponse({ ok });
+    //       console.log('[background] purchase saved:', body);
+    //       sendResponse({ ok });
 
-        } catch (e) {
-          console.error('[background] PURCHASE_MADE error', e?.message);
-          sendResponse({ ok: false, error: e?.message });
-        }
-      })();
-      return true;
-    }
+    //     } catch (e) {
+    //       console.error('[background] PURCHASE_MADE error', e?.message);
+    //       sendResponse({ ok: false, error: e?.message });
+    //     }
+    //   })();
+    //   return true;
+    // }
 
     // ── FORCE_UPDATE_POPUP ────────────────────────────────────────────────────
     if (msg.type === 'FORCE_UPDATE_POPUP') {
@@ -230,11 +230,22 @@ chrome.runtime.onInstalled.addListener(() => {
 
 }); 
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async(msg, sender, sendResponse) => {
   console.log('background received:', msg.type) 
   if (msg.type === 'PURCHASE_MADE') {
+
+    const { userId } = await chrome.storage.local.get('userId');
     
     const URI = 'http://localhost:3000/check-purchase'; 
+
+    let itemData = msg.payload.item || "Unknown Items";
+    
+    // Check if it's a long string of items separated by commas
+    if (itemData.includes(',')) {
+      const itemArray = itemData.split(',');
+      const limitedItems = itemArray.slice(0, 3).map(i => i.trim()); // Take top 3
+      itemData = limitedItems.join(', ') + (itemArray.length > 3 ? '... and more' : '');
+    }
 
     fetch(URI, {
   method: 'POST',
@@ -243,7 +254,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     item: msg.payload.item,
     price: msg.payload.price,
     decision: "Purchased",
-    userId: "699a0423a945c8b3cf206362"
+    userId: userId || "699a59d64f7b183bcafeb44e"
   }),
 })
 .then(response => {
