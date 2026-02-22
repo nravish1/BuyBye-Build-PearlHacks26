@@ -2,12 +2,17 @@
 const MODEL_NAME = 'gemini-2.5-flash'; // Or 'gemini-2.5-pro', 'gemini-1.5-pro', etc.
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${process.env.GEMINI_API_KEY}`
 
-export const getGeminiAdvice = async (item, price, budget) => {
+export const getGeminiAdvice = async (item, price, budget, goal) => {
   const spent = budget.spent || 0
   const total = budget.total || 0
   const remaining = total - spent
 
   console.log('1. Budget data received:', { item, price, spent, total, remaining })
+
+
+  const goalContext = goal?.label
+  ? `The user is saving for: "${goal.label}". They need $${goal.targetAmount || '?'} and have saved $${goal.savedAmount || 0} so far.`
+  : ''
 
 //   CHANGE THIS 
   const prompt = `
@@ -15,9 +20,10 @@ export const getGeminiAdvice = async (item, price, budget) => {
     Their monthly budget is $${total}.
     They have spent $${spent} so far this month.
     They have $${remaining} remaining.
-    
-    Give them one short, honest reason to pause before buying based on item and remaining budget.
-    Keep it under 3 sentences. Be encouraging, not preachy.
+
+    based on the $${goalContext}, determine if this is a purchase that would align with the user's goal and savings
+
+    Give them one short, honest reason to pause before buying, 3 sentence limit, keep it short.
   `
 
   console.log('2. Calling Gemini API...')

@@ -151,8 +151,9 @@ app.post('/check-purchase', async (req, res) => {
 
   const user = await User.findById(userId).catch(() => null)
   const budget = user?.budget || { total: 0, spent: 0 }
+  const goal = user?.goal || " "
 
-  const advice = await getGeminiAdvice(item, price, budget)
+  const advice = await getGeminiAdvice(item, price, budget, goal)
 
   try {
     const inferredCategory = category || inferCategory(item)
