@@ -150,9 +150,35 @@ chrome.runtime.onInstalled.addListener(() => {
 }); 
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  console.log('background received:', msg.type) 
   if (msg.type === 'PURCHASE_MADE') {
-    console.log('got price:', msg.payload.price)
-    console.log('got item:', msg.payload.item)
-    console.log('got site:', msg.payload.site)
-  }
+    
+    const URI = 'http://localhost:3000/check-purchase'; 
+
+    fetch(URI, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    item: msg.payload.item,
+    price: msg.payload.price,
+    userId: "699a0423a945c8b3cf206362"
+  }),
 })
+.then(response => {
+  console.log('server response status:', response.status)
+  return response.json()
+})
+.then(data => {
+  console.log('server response data:', data)
+  sendResponse({ status: 'success', advice: data.message });
+})
+.catch((error) => {
+  console.error('Fetch error:', error.message) // ← this will tell you exactly why
+  sendResponse({ status: 'error' });
+});
+
+    return true; 
+  }
+});
+
+

@@ -16,7 +16,7 @@ export const getGeminiAdvice = async (item, price, budget) => {
     They have spent $${spent} so far this month.
     They have $${remaining} remaining.
     
-    Give them one short, honest, and slightly witty reason to pause before buying.
+    Give them one short, honest reason to pause before buying based on item and remaining budget.
     Keep it under 3 sentences. Be encouraging, not preachy.
   `
 
