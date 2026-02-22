@@ -2,79 +2,188 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Pause & Think</title>
+  <title>ByeBuy</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
   <style>
+    :root {
+      --blush:        #f5eeee;
+      --petal:        #edddd4;
+      --dusty:        #d4b8b8;
+      --accent:       #9e7070;
+      --accent-light: #c49a9a;
+      --accent-dark:  #6b4a4a;
+      --text-primary:   #3d2b2b;
+      --text-secondary: #8a6a6a;
+      --text-light:     #b89898;
+      --card-bg:     #fdfaf9;
+      --card-border: #edddd4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'DM Sans', sans-serif;
       width: 280px;
-      padding: 12px;
-      background: #fafafa;
+      padding: 14px;
+      background-color: var(--blush);
+      background-image: radial-gradient(circle, #d4b8b8 1px, transparent 1px);
+      background-size: 22px 22px;
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
     }
 
-    h2 { margin: 0 0 8px 0; }
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
 
+    .header h2 {
+      font-family: 'Lora', serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-style: italic;
+    }
+
+    /* ── Cards ───────────────────────────────────────────────────────── */
     .card {
-      background: white;
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 11px 13px;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 12px rgba(158,112,112,0.07);
     }
 
-    button {
-      margin-top: 8px;
+    .card-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-light);
+      margin-bottom: 7px;
+    }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    button { font-family: 'DM Sans', sans-serif; cursor: pointer; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      color: white;
+      border: none;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 3px 10px rgba(158,112,112,0.22);
+      transition: opacity 0.2s;
+      margin-top: 4px;
+    }
+
+    .btn-primary:hover { opacity: 0.9; }
+
+    .btn-soft {
       width: 100%;
       padding: 8px;
-      border: none;
-      border-radius: 6px;
-      background: #e5e7eb;
-      color: rgb(0, 0, 0);
+      background: var(--petal);
+      color: var(--accent-dark);
+      border: 1px solid var(--dusty);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-soft:hover { background: var(--dusty); }
+
+    .btn-logout {
+      font-size: 10px;
+      padding: 3px 10px;
+      background: var(--petal);
+      color: var(--accent-dark);
+      border: 1px solid var(--dusty);
+      border-radius: 100px;
       cursor: pointer;
+      transition: background 0.2s;
     }
 
-    button.secondary {
-      background: #e5e7eb;
-      color: #111;
-    }
+    .btn-logout:hover { background: var(--dusty); }
 
-    input[type="number"] {
-      width: 70px;
-      margin-left: 6px;
-    }
-
+    /* ── Inputs ──────────────────────────────────────────────────────── */
     input[type="email"],
     input[type="password"] {
       width: 100%;
-      padding: 7px 10px;
+      padding: 8px 11px;
       margin-bottom: 8px;
-      border: 1px solid #d4b8b8;
-      border-radius: 8px;
-      box-sizing: border-box;
+      border: 1px solid var(--dusty);
+      border-radius: 10px;
+      background: white;
+      font-family: 'DM Sans', sans-serif;
       font-size: 13px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus { border-color: var(--accent-light); }
+
+    input[type="number"] {
+      width: 60px;
+      margin-left: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--dusty);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--text-primary);
+      background: white;
       outline: none;
     }
 
-    small { color: #666; }
-
-    #result {
-      white-space: pre-wrap;
+    /* ── User badge ──────────────────────────────────────────────────── */
+    .user-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 7px 11px;
       font-size: 12px;
-      margin-top: 8px;
+      color: var(--accent);
+      margin-bottom: 8px;
     }
 
+    /* ── Last cart ───────────────────────────────────────────────────── */
+    #last {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ── Disable dropdown ────────────────────────────────────────────── */
     .disable-wrapper { position: relative; }
 
     #disableMenu {
       position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
+      bottom: calc(100% + 4px);
+      left: 0; right: 0;
       background: white;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
       overflow: hidden;
       z-index: 10;
+      box-shadow: 0 4px 16px rgba(158,112,112,0.12);
     }
 
     #disableMenu.hidden { display: none; }
@@ -83,64 +192,32 @@
       display: block;
       width: 100%;
       margin: 0;
-      padding: 8px 16px;
+      padding: 9px 14px;
       text-align: left;
       background: none;
       border: none;
-      border-bottom: 1px solid #f0f0f0;
-      border-radius: 0;
-      color: #111;
-      cursor: pointer;
-    }
-
-    .disable-option:last-child { border-bottom: none; }
-    .disable-option:hover { background: #f5f5f5; }
-
-    /* Auth styles */
-    #login-view { display: none; }
-    #main-view  { display: none; }
-
-    .user-badge {
-      background: #fdf0f3;
-      border: 1px solid #edddd4;
-      border-radius: 8px;
-      padding: 7px 10px;
+      border-bottom: 1px solid var(--card-border);
+      font-family: 'DM Sans', sans-serif;
       font-size: 12px;
-      color: #9e7070;
-      margin-bottom: 2px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .btn-login {
-      width: 100%;
-      padding: 9px;
-      background: linear-gradient(135deg, #9e7070, #c49a9a);
-      color: white;
-      border: none;
-      border-radius: 8px;
+      color: var(--text-secondary);
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      margin-top: 4px;
+      transition: background 0.15s;
     }
 
-    .btn-logout {
+    .disable-option:last-child { border-bottom: none; color: #b06060; }
+    .disable-option:hover { background: var(--blush); }
+
+    /* ── Status / error ──────────────────────────────────────────────── */
+    #result {
       font-size: 11px;
-      padding: 3px 10px;
-      background: #f0e6e6;
-      color: #7a4f4f;
-      border: 1px solid #d4b8b8;
-      border-radius: 20px;
-      cursor: pointer;
-      width: auto;
-      margin: 0;
+      color: var(--text-light);
+      text-align: center;
+      margin-top: 8px;
     }
 
     .error-msg {
       color: #b06060;
-      font-size: 12px;
+      font-size: 11px;
       margin-bottom: 6px;
       display: none;
     }
@@ -150,21 +227,26 @@
 </head>
 
 <body>
-  <h2>⏸ Pause & Think</h2>
 
-  <!-- LOGIN VIEW -->
-  <div id="login-view" class="card">
-    <p style="font-size:12px; color:#888; margin-bottom:10px;">Sign in to track your purchases</p>
+  <div class="header">
+    <h2>ByeBuy</h2>
+  </div>
+
+  <!-- ── LOGIN VIEW ──────────────────────────────────────────────────── -->
+  <div id="login-view" class="card" style="display:none;">
+    <p class="card-label">Sign in to track purchases</p>
     <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
     <p id="login-error" class="error-msg"></p>
-    <button class="btn-login" id="loginBtn">Log In</button>
+    <button class="btn-primary" id="loginBtn">Log In</button>
+    <p style="font-size:11px; color:var(--text-light); text-align:center; margin-top:8px;">
+      Same account as the web app
+    </p>
   </div>
 
-  <!-- MAIN VIEW -->
-  <div id="main-view">
+  <!-- ── MAIN VIEW ───────────────────────────────────────────────────── -->
+  <div id="main-view" style="display:none;">
 
-    <!-- User badge -->
     <div class="user-badge">
       <span id="userName-display">👋 User</span>
       <button class="btn-logout" id="logoutBtn">Log out</button>
@@ -172,38 +254,39 @@
 
     <!-- Hourly wage -->
     <div class="card">
-      <label>
-        Hourly wage:
-        $<input id="wage" type="number" min="1" step="1" value="20">
+      <p class="card-label">Hourly Wage</p>
+      <label style="font-size:13px; color:var(--text-secondary);">
+        $<input id="wage" type="number" min="1" step="1" value="20" />
+        <span style="font-size:11px; color:var(--text-light); margin-left:4px;">per hour</span>
       </label>
     </div>
 
-    <!-- Last detected item -->
+    <!-- Last item -->
     <div class="card">
-      <strong>Last detected item</strong>
-      <div id="last">No purchase detected yet.</div>
+      <p class="card-label">Last Detected Item</p>
+      <div id="last" style="color:var(--text-light); font-size:12px;">No purchase detected yet.</div>
     </div>
 
     <!-- Actions -->
     <div class="card">
-      <button id="wait" class="secondary">Dashboard</button>
-      <button id="resume" class="secondary">Resume purchase</button>
+      <p class="card-label">Actions</p>
+      <button class="btn-soft" id="wait">View Dashboard</button>
+      <button class="btn-soft" id="resume">Resume Purchase</button>
 
-      <!-- Disable dropdown -->
-      <div class="disable-wrapper">
-        <button id="disableBtn">Disable ▾</button>
+      <div class="disable-wrapper" style="margin-top:6px;">
+        <button class="btn-soft" id="disableBtn" style="margin-top:0;">Disable Extension ▾</button>
         <div id="disableMenu" class="hidden">
-          <button class="disable-option" data-hours="1">1 hour</button>
-          <button class="disable-option" data-hours="4">4 hours</button>
-          <button class="disable-option" data-hours="8">8 hours</button>
-          <button class="disable-option" data-hours="0">Until re-enabled</button>
+          <button class="disable-option" data-hours="1">Disable for 1 hour</button>
+          <button class="disable-option" data-hours="4">Disable for 4 hours</button>
+          <button class="disable-option" data-hours="8">Disable for 8 hours</button>
+          <button class="disable-option" data-hours="0">Disable permanently</button>
         </div>
       </div>
 
       <div id="result"></div>
     </div>
 
-  </div><!-- end main-view -->
+  </div>
 
   <script src="popup.js"></script>
 </body>

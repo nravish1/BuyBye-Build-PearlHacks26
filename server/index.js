@@ -130,7 +130,7 @@ app.post('/check-purchase', async (req, res) => {
 
   res.json({ message: advice })
 })
-
+*/
 
 // Step 1 — frontend calls this to get a link token to open Plaid Link
 app.post('/plaid/link', async (req, res) => {
@@ -168,7 +168,7 @@ app.get('/plaid/transactions/:userId', async (req, res) => {
   res.json(response.data.transactions)
 })
 
-*/
+
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
 })
