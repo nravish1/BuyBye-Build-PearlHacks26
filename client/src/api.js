@@ -86,3 +86,12 @@ export const updateUser = async (userId, data) => {
   })
   return res.json()
 }
+
+export const updateGoal = async (userId, goalData) => {
+  const res = await fetch(`${BASE_URL}/user/${userId}/goal`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(goalData)
+  })
+  return res.json()
+}
