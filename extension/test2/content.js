@@ -115,4 +115,43 @@ function showPauseModal() {
     host.remove();
   });
   
+  function extractPrice() {
+    const selectors = [
+    '[class*="total"]',
+    '[class*="order-total"]',
+    '[class*="cart-total"]',
+    '[data-testid*="total"]',
+    '[aria-label*="total"]',
+    '[class*="grand-total"]',
+    '[class*="esitmated-total"]',
+    '[class*="subtotal"]'
+];
+  for (const selector of selectors) {
+    const el = document.querySelector(selector)
+    if (el) {
+      const match = el.textContent.match(/\$[\d,]+\.?\d*/)
+      if (match) return parseFloat(match[0].replace(/[^0-9.]/g, ''))
+    }
+  }
+
+  const bodyText = document.body.innerText
+  const match = bodyText.match(/(?:total|subtotal)[^\n]*?\$([\d,]+\.?\d*)/i)
+  if (match) return parseFloat(match[1].replace(/,/g, ''))
+  
+  console.log('price not found')
+
+  return null;
+  
+  }
+  shadow.getElementById("continue-anyway").addEventListener('click', () => {
+    const price = extractPrice();
+    console.log('Extracted price:', price);
+
+    chrome.runtime.sendMessage({
+    type: 'PURCHASE_MADE',
+    payload: { price, item: document.title, site: window.location.hostname }
+  })
+    host.remove();
+  })
+
 }
