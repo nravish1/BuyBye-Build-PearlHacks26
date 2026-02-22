@@ -26,7 +26,7 @@ export default function Login() {
       <div className="card w-full max-w-sm">
 
         <h1 className="text-2xl text-center mb-1" style={{ fontFamily: "'Lora', serif" }}>
-          ByeBuy
+          BuyBye
         </h1>
         <p className="text-center text-sm mb-8" style={{ color: 'var(--text-light)' }}>
           {isRegister ? 'Create your account' : 'Welcome back'}
