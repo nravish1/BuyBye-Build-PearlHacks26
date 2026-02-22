@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
   password:         String,
   plaidAccessToken: String,
   interests:        [String],
-
+  hourlyWage: { type: Number, default: 0 },
   goal: {
     label:        String,
     targetAmount: Number,
