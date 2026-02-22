@@ -152,7 +152,7 @@ function PlaidConnectButton({ userId, onSuccess }) {
       onClick={() => open()}
       disabled={!ready || !linkToken}
     >
-      🏦 Connect Your Bank
+      Connect Your Bank
     </button>
   );
 }
@@ -247,10 +247,10 @@ export default function Dashboard() {
           emoji: { clothing: "🧥", food: "🍜", beauty: "🌸", entertainment: "🎬" }[name] || "📦",
         }))
       : [
-          { name: "Clothing",      spent: 0, total: 200, emoji: "🧥" },
-          { name: "Food & Drink",  spent: 0, total: 100, emoji: "🍜" },
-          { name: "Beauty",        spent: 0, total: 60,  emoji: "🌸" },
-          { name: "Entertainment", spent: 0, total: 50,  emoji: "🎬" },
+          { name: "Clothing",      spent: 0, total: 200},
+          { name: "Food & Drink",  spent: 0, total: 100},
+          { name: "Beauty",        spent: 0, total: 60},
+          { name: "Entertainment", spent: 0, total: 50},
         ];
 
   const totalSpent  = categories.reduce((sum, c) => sum + c.spent, 0);
@@ -288,7 +288,7 @@ export default function Dashboard() {
           <span className="text-lg">⏸</span>
           <span className="text-lg font-semibold tracking-tight"
             style={{ fontFamily: "'Lora', serif", color: "var(--text-primary)" }}>
-            Pause & Think
+            ByeBuy
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -319,7 +319,7 @@ export default function Dashboard() {
             {!bankConnected ? (
               <PlaidConnectButton userId={userId} onSuccess={handlePlaidSuccess} />
             ) : (
-              <p className="text-xs mt-4 text-center" style={{ color: "var(--text-light)" }}>✅ Bank connected</p>
+              <p className="text-xs mt-4 text-center" style={{ color: "var(--text-light)" }}>Bank connected</p>
             )}
           </div>
 
@@ -337,7 +337,7 @@ export default function Dashboard() {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 fade-up fade-up-3">
             <StatChip label="Paused" value={pausedCount} sub="this month" bg="var(--petal)" textColor="var(--accent-dark)" />
-            <StatChip label="Saved" value={`$${savedAmount}`} sub="from pausing" bg="#e8efe8" textColor="#3d6b3d" />
+            <StatChip label="Saved" value={`$${Number(savedAmount).toFixed(2)}`} sub="from pausing" bg="#e8efe8" textColor="#3d6b3d" />
           </div>
         </div>
 
@@ -406,7 +406,7 @@ export default function Dashboard() {
               <p className="text-sm text-center py-6" style={{ color: "var(--text-light)" }}>
                 {dataSource === "bank"
                   ? "No bank transactions found."
-                  : "No purchases yet — go trigger the extension! 🛍️"}
+                  : "No purchases yet — go trigger the extension! "}
               </p>
             ) : (
               filtered.map((p) => <PurchaseRow key={p._id || p.transaction_id} {...p} />)
