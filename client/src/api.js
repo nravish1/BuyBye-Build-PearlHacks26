@@ -63,3 +63,17 @@ export const createLinkToken = async (userId) => {
   })
   return res.json()
 }
+
+export const exchangeToken = async (public_token, userId) => {
+  const res = await fetch(`${BASE_URL}/plaid/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ public_token, userId })
+  })
+  return res.json()
+}
+
+export const getPlaidTransactions = async (userId) => {
+  const res = await fetch(`${BASE_URL}/plaid/transactions/${userId}`)
+  return res.json()
+}
