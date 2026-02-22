@@ -249,7 +249,7 @@ app.post('/plaid/link', async (req, res) => {
   const { userId } = req.body
   const response = await plaidClient.linkTokenCreate({
     user: { client_user_id: userId },
-    client_name: 'Pause & Think',
+    client_name: 'BuyBye',
     products: ['transactions'],
     country_codes: ['US'],
     language: 'en',
