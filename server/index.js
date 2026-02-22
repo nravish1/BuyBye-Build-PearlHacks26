@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import { plaidClient } from './plaid.js'
 import { connect } from './db.js'
 import { User, Purchase } from './models.js'
 import { getGeminiAdvice } from './gemini.js'
@@ -75,6 +76,28 @@ app.get('/test-gemini', async (req, res) => {
   res.json(data)
 })
 
+//TEST PLAID
+
+app.post('/plaid/test-setup', async (req, res) => {
+  const { userId } = req.body
+
+  // Creates a sandbox access token directly — no Link flow needed
+  const sandboxResponse = await plaidClient.sandboxPublicTokenCreate({
+    institution_id: 'ins_109508',   // Chase sandbox
+    initial_products: ['transactions']
+  })
+
+  const exchangeResponse = await plaidClient.itemPublicTokenExchange({
+    public_token: sandboxResponse.data.public_token
+  })
+
+  await User.findByIdAndUpdate(userId, {
+    plaidAccessToken: exchangeResponse.data.access_token
+  })
+
+  res.json({ success: true, message: 'Sandbox access token saved' })
+})
+
 // Main endpoint the extension calls
 app.post('/check-purchase', async (req, res) => {
   const { item, price, userId } = req.body
@@ -87,6 +110,43 @@ app.post('/check-purchase', async (req, res) => {
   await Purchase.create({ userId, item, price, decision: 'paused' })
 
   res.json({ message: advice })
+})
+
+
+// Step 1 — frontend calls this to get a link token to open Plaid Link
+app.post('/plaid/link', async (req, res) => {
+  const { userId } = req.body
+  const response = await plaidClient.linkTokenCreate({
+    user: { client_user_id: userId },
+    client_name: 'Pause & Think',
+    products: ['transactions'],
+    country_codes: ['US'],
+    language: 'en',
+  })
+  res.json({ link_token: response.data.link_token })
+})
+
+// Step 2 — after user connects bank, swap public token for access token
+app.post('/plaid/exchange', async (req, res) => {
+  const { public_token, userId } = req.body
+  const response = await plaidClient.itemPublicTokenExchange({ public_token })
+  await User.findByIdAndUpdate(userId, {
+    plaidAccessToken: response.data.access_token
+  })
+  res.json({ success: true })
+})
+
+// Step 3 — fetch transactions for this user
+app.get('/plaid/transactions/:userId', async (req, res) => {
+  const user = await User.findById(req.params.userId)
+  if (!user?.plaidAccessToken) return res.json([])
+
+  const response = await plaidClient.transactionsGet({
+    access_token: user.plaidAccessToken,
+    start_date: '2026-01-01',
+    end_date: '2026-02-21',
+  })
+  res.json(response.data.transactions)
 })
 
 app.listen(process.env.PORT, () => {
