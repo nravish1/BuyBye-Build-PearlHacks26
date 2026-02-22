@@ -1,6 +1,3 @@
-
-
-
 document.addEventListener('click', (e) => {
   // const checkoutButton = e.target.closest('button, a, input[type="submit"]');
   // if(!checkoutButton) return;
@@ -39,6 +36,7 @@ document.addEventListener('click', (e) => {
 }, true);
 
 function showPauseModal() {
+  const itemName = extractItemName()
   const host = document.createElement('div');
   document.body.appendChild(host);
 
@@ -150,13 +148,36 @@ function showPauseModal() {
   return null;
   
   }
+
+function extractItemName() {
+  
+  const cartList = document.querySelector('[data-testid="cart-items-list"]') || document;
+
+  
+  const nameElements = cartList.querySelectorAll('[data-testid="productName"] span');
+
+  if (nameElements.length === 0) {
+    const backupLinks = cartList.querySelectorAll('a[data-automation-id="name"]');
+    if (backupLinks.length > 0) {
+      return Array.from(backupLinks).map(el => el.getAttribute('aria-label') || el.innerText).join(', ');
+    }
+    return "Items in Cart";
+  }
+  const names = Array.from(nameElements)
+    .map(el => el.innerText.trim())
+    .filter(text => text.length > 0);
+
+  const uniqueNames = [...new Set(names)];
+
+  return uniqueNames.join(', ');
+}
   shadow.getElementById("continue-anyway").addEventListener('click', () => {
     const price = extractPrice();
     console.log('Extracted price:', price);
 
     chrome.runtime.sendMessage({
     type: 'PURCHASE_MADE',
-    payload: { price, item: document.title, site: window.location.hostname }
+    payload: { price, item: itemName, site: window.location.hostname }
   })
     host.remove();
   });
