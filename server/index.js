@@ -145,35 +145,89 @@ app.patch('/user/:userId/goal', async (req, res) => {
 //   }
 //   res.json({ message: advice })
 // })
+
 app.post('/check-purchase', async (req, res) => {
-  const { item, price, userId, decision } = req.body
-  
-  let budget = { total: 300, spent: 240, categories: { clothing: 200 } }
+  const { item, price, userId, decision, category } = req.body
+
   const user = await User.findById(userId).catch(() => null)
-  if (user) budget = user.budget
+  const budget = user?.budget || { total: 0, spent: 0 }
 
   const advice = await getGeminiAdvice(item, price, budget)
-  try {
 
-    await Purchase.create({ userId: userId, item, price, decision: decision || 'paused' })
+  try {
+    const inferredCategory = category || inferCategory(item)
+
+    await Purchase.create({
+      userId,
+      item,
+      price,
+      category: inferredCategory,
+      decision: decision || 'paused'
+    })
+
+    // If they went ahead and bought it, update budget spent
     if (decision === 'Purchased' && user) {
-      const numericPrice = Number(price);
-      
-      user.budget.total -= numericPrice; 
-      user.budget.spent += numericPrice; 
-      
-      user.markModified('budget'); 
-      await user.save();
-      
-      console.log(`[server] Real purchase made. New Total: ${user.budget.total}`);
+      const numericPrice = Number(price)
+      user.budget.spent = (user.budget.spent || 0) + numericPrice
+
+      // Also increment category-level spent
+      const catKey = inferredCategory?.toLowerCase()
+      if (catKey && user.budget.categories?.[catKey]) {
+        user.budget.categories[catKey].spent =
+          (user.budget.categories[catKey].spent || 0) + numericPrice
+      }
+
+      user.markModified('budget')
+      await user.save()
+      console.log(`[server] Purchase saved — category: ${inferredCategory}, $${numericPrice}`)
     }
-  
+  } catch (e) {
+    console.warn('[server] Error saving purchase:', e.message)
   }
-  catch (e) {
-    console.log('[server] Error saving purchase');
-  }
+
   res.json({ message: advice })
 })
+
+// some demo cases for category -would refine later with ml
+function inferCategory(item) {
+  if (!item) return 'other'
+  const name = item.toLowerCase()
+  if (/shirt|dress|jeans|jacket|shoe|boot|bag|hoodie|sweater|cloth|wear|apparel|fashion/.test(name)) return 'clothing'
+  if (/food|coffee|restaurant|pizza|burger|sushi|snack|drink|cafe|meal|grocery/.test(name))          return 'food'
+  if (/makeup|lipstick|mascara|skincare|lotion|perfume|beauty|serum|moisturizer|nail/.test(name))     return 'beauty'
+  if (/game|movie|ticket|concert|netflix|spotify|book|toy|sport|gym|kindle/.test(name))              return 'entertainment'
+  return 'other'
+}
+
+// app.post('/check-purchase', async (req, res) => {
+//   const { item, price, userId, decision } = req.body
+  
+//   let budget = { total: 300, spent: 240, categories: { clothing: 200 } }
+//   const user = await User.findById(userId).catch(() => null)
+//   if (user) budget = user.budget
+
+//   const advice = await getGeminiAdvice(item, price, budget)
+//   try {
+
+//     await Purchase.create({ userId: userId, item, price, decision: decision || 'paused' })
+//     if (decision === 'Purchased' && user) {
+//       const numericPrice = Number(price);
+      
+//       user.budget.total -= numericPrice; 
+//       user.budget.spent += numericPrice; 
+      
+//       user.markModified('budget'); 
+//       await user.save();
+      
+//       console.log(`[server] Real purchase made. New Total: ${user.budget.total}`);
+//     }
+  
+//   }
+//   catch (e) {
+//     console.log('[server] Error saving purchase');
+//   }
+//   res.json({ message: advice })
+// })
 /*
 app.post('/check-purchase', async (req, res) => {
   const { item, price, userId } = req.body
