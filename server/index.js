@@ -7,8 +7,10 @@ import { getGeminiAdvice } from './gemini.js'
 
 
 const app = express()
-app.use(cors())
-app.use(express.json())
+app.use(cors({
+  origin: '*'
+}))
+app.use(express.json({limit: '50mb'}))
 
 await connect()
 
@@ -76,6 +78,23 @@ app.get('/test-gemini', async (req, res) => {
 })
 
 // Main endpoint the extension calls
+//mock user and budget
+app.post('/check-purchase', async (req, res) => {
+  const { item, price, userId } = req.body
+  
+  let budget = { total: 300, spent: 240, categories: { clothing: 200 } }
+  const user = await User.findById(userId).catch(() => null)
+  if (user) budget = user.budget
+
+  const advice = await getGeminiAdvice(item, price, budget)
+  try {
+    await Purchase.create({ userId: userId, item, price, decision: 'paused' })}
+  catch (e) {
+    console.log('[server] Error saving purchase');
+  }
+  res.json({ message: advice })
+})
+/*
 app.post('/check-purchase', async (req, res) => {
   const { item, price, userId } = req.body
 
@@ -88,7 +107,7 @@ app.post('/check-purchase', async (req, res) => {
 
   res.json({ message: advice })
 })
-
+*/
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
 })
