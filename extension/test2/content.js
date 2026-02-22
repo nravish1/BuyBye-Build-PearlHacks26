@@ -103,9 +103,16 @@ function showPauseModal() {
   }, 1000);
 
   shadow.getElementById("talk-me-out").addEventListener('click', () => {
-    alert("Here's a quick checklist to consider:\n\n1. Do I really need this?\n2. Can I afford it?\n3. Will I use it often?\n4. Is there a cheaper alternative?\n5. Can I wait for a sale?");
-    host.remove();
+  const pEl = shadow.querySelector('p');
+  pEl.innerText = 'Thinking...';
+  
+  chrome.runtime.sendMessage({
+    type: 'CAPTURE_UPLOAD',
+    payload: { title: document.title, priceText: '' }
+  }, (response) => {
+    pEl.innerText = response?.analysis?.message || 'Take a moment before buying!';
   });
+});
 
   
   function extractPrice() {

@@ -3,11 +3,11 @@
   "name": "Pause & Think",
   "version": "1.0",
   "description": "Pause before impulse purchases",
-  "permissions": ["storage", "activeTab", "scripting", "alarms", "notifications"],
-  "host_permissions": ["https://*/*"],
+  "permissions": ["storage", "activeTab", "scripting", "alarms", "notifications", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
-      "matches": ["https://*/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"]
     }
   ],
