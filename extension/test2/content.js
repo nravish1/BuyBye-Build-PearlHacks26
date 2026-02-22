@@ -70,6 +70,7 @@ function showPauseModal() {
       width: 400px;
       box-shadow: 0 20px 60px rgba(158, 112, 112, 0.18);
       animation: slideUp 0.3s ease;
+      position: relative;
     }
 
     @keyframes slideUp {
@@ -188,6 +189,24 @@ function showPauseModal() {
       background: #edddd4;
     }
 
+  .close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #d4b8b8;
+    background: #f5eeee;
+    color: #9e7070;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .close-btn:hover { background: #edddd4; }
+
     /* ── Footer note ──────────────────────────── */
     .modal-footer {
       text-align: center;
@@ -199,6 +218,7 @@ function showPauseModal() {
 
   <div id="overlay">
     <div id="pause-modal">
+    <button class="close-btn" id="close-modal">✕</button>
 
       <div class="modal-header">
         <div class="pause-icon">⏸</div>
@@ -224,6 +244,10 @@ function showPauseModal() {
   </div>
   `;
 
+  shadow.getElementById('close-modal').addEventListener('click', () => {
+  clearInterval(interval);
+  host.remove();
+  });
   // ── Show item name ──────────────────────────────────────────────────────
   const chip = shadow.getElementById('item-chip');
   if (itemName && itemName !== 'Items in Cart') {
