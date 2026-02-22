@@ -111,11 +111,20 @@ function showPauseModal() {
     host.remove();
   });
 
-  shadow.getElementById("continue-anyway").addEventListener('click', () => {
-    host.remove();
-  });
   
   function extractPrice() {
+    const scripts = document.querySelectorAll('script[type="application/ld+json"]')
+  for (const script of scripts) {
+    try {
+      const data = JSON.parse(script.textContent)
+      if (data.price) return parseFloat(data.price)
+      if (data.offers?.price) return parseFloat(data.offers.price)
+    } catch(e) {}
+  }
+
+  const meta = document.querySelector('meta[property="product:price:amount"]') ||
+               document.querySelector('meta[itemprop="price"]')
+  if (meta) return parseFloat(meta.getAttribute('content'))
     const selectors = [
     '[class*="total"]',
     '[class*="order-total"]',
@@ -152,6 +161,6 @@ function showPauseModal() {
     payload: { price, item: document.title, site: window.location.hostname }
   })
     host.remove();
-  })
+  });
 
 }
