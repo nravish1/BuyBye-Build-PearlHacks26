@@ -455,21 +455,33 @@ export default function Dashboard() {
     if (!userId) { window.location.href = "/"; return; }
 
     const load = async () => {
-      const userData     = await getUser(userId);
-      const purchaseData = await getPurchases(userId);
-      setUser(userData);
-      setPurchases(purchaseData || []);
+      try {
+        // Load user — if this fails, still show dashboard with empty state
+        const userData = await getUser(userId).catch(() => null);
+        const purchaseData = await getPurchases(userId).catch(() => []);
 
-      // If user already has a Plaid token, load their transactions automatically
-      if (userData?.plaidAccessToken) {
-        const txns = await getPlaidTransactions(userId);
-        if (txns?.length) {
-          setPlaidTransactions(txns);
-          setBankConnected(true);
-          setDataSource("bank");
+        setUser(userData);
+        setPurchases(purchaseData || []);
+
+        // Plaid is optional — failure here must never block the dashboard
+        if (userData?.plaidAccessToken) {
+          try {
+            const txns = await getPlaidTransactions(userId);
+            if (Array.isArray(txns) && txns.length) {
+              setPlaidTransactions(txns);
+              setBankConnected(true);
+              setDataSource("bank");
+            }
+          } catch (plaidErr) {
+            console.warn("Plaid transactions failed, continuing without bank data:", plaidErr.message);
+          }
         }
+      } catch (err) {
+        console.error("Dashboard load error:", err.message);
+      } finally {
+        // Always runs — dashboard will never be stuck on loading
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     load();
